@@ -1,0 +1,9 @@
+[package]
+name = "client"
+version = "0.1.0"
+authors = ["LudeeD <lfssilva@ua.pt>"]
+edition = "2018"
+
+[dependencies]
+clap = "~2.27.0"
+sawtooth-sdk = "0.2"
