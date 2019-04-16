@@ -1,5 +1,5 @@
 [package]
-name = "dignitas-client"
+name = "clignitas"
 version = "0.1.0"
 authors = ["Luís Silva <lfssilva@ua.pt>"]
 edition = "2018"
