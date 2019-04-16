@@ -1,0 +1,7 @@
+[package]
+name = "tp-dignitas"
+version = "0.1.0"
+authors = ["LudeeD <lfssilva@ua.pt>"]
+edition = "2018"
+
+[dependencies]
