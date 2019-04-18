@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 sawtooth-sdk = "0.2"
+rust-crypto = "0.2.36"

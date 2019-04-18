@@ -4,12 +4,12 @@ mod handler;
 
 use sawtooth_sdk::processor::TransactionProcessor;
 
-use handler::handler::XoTransactionHandler;
+use handler::handler::SwTransactionHandler;
 
 fn main() {
     let endpoint = "tcp://localhost:4004";
 
-    let handler = XoTransactionHandler::new();
+    let handler = SwTransactionHandler::new();
     let mut processor = TransactionProcessor::new(endpoint);
 
     processor.add_handler(&handler);
