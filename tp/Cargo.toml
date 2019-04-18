@@ -5,3 +5,4 @@ authors = ["LudeeD <lfssilva@ua.pt>"]
 edition = "2018"
 
 [dependencies]
+sawtooth-sdk = "0.2"
