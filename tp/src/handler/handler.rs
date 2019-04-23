@@ -1,29 +1,13 @@
-/*
- * Copyright 2018 Intel corporation.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * -----------------------------------------------------------------------------
- */
-
 use sawtooth_sdk::messages::processor::TpProcessRequest;
 use sawtooth_sdk::processor::handler::ApplyError;
 use sawtooth_sdk::processor::handler::TransactionContext;
 use sawtooth_sdk::processor::handler::TransactionHandler;
 
-use crate::handler::payload::SwPayload;
 use crate::handler::payload::Action;
-use crate::handler::state::SwState;
+use crate::handler::payload::SwPayload;
 use crate::handler::state::get_sw_prefix;
+use crate::handler::state::SwState;
+use crate::handler::vote::Vote;
 
 pub struct SwTransactionHandler {
     family_name: String,
@@ -33,32 +17,21 @@ pub struct SwTransactionHandler {
 
 //Transactions in simple wallet
 trait SwTransactions {
-    fn deposit(
+    fn create_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError>;
+    fn vote(
         &self,
         state: &mut SwState,
         customer_pubkey: &str,
-        deposit_amount: u32,
+        vote_id: u32,
+        value: u32,
     ) -> Result<(), ApplyError>;
-    fn withdraw(
-        &self,
-        state: &mut SwState,
-        customer_pubkey: &str,
-        withdraw_amount: u32,
-    ) -> Result<(), ApplyError>;
-    fn transfer(
-        &self,
-        state: &mut SwState,
-        customer_pubkey: &str,
-        beneficiary_pubkey: &str,
-        transfer_amount: u32,
-    ) -> Result<(), ApplyError>;
-    fn balance(&self, state: &mut SwState, customer_pubkey: &str) -> Result<u32, ApplyError>;
+    fn close_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError>;
 }
 
 impl SwTransactionHandler {
     pub fn new() -> SwTransactionHandler {
         SwTransactionHandler {
-            family_name: String::from("simplewallet"),
+            family_name: String::from("dignitas"),
             family_versions: vec![String::from("1.0")],
             namespaces: vec![String::from(get_sw_prefix().to_string())],
         }
@@ -98,6 +71,7 @@ impl TransactionHandler for SwTransactionHandler {
             Err(e) => return Err(e),
             Ok(payload) => payload,
         };
+
         let payload = match payload {
             Some(x) => x,
             None => {
@@ -109,43 +83,21 @@ impl TransactionHandler for SwTransactionHandler {
 
         let mut state = SwState::new(context);
 
-
         match payload.get_action() {
-            Action::Deposit => {
-                let deposit_amount = payload.get_value();
-                self.deposit(&mut state, customer_pubkey, deposit_amount)?;
+            Action::CreateVote => {
+                let vote_id = payload.get_vote_id();
+                self.create_vote(&mut state, vote_id)?;
             }
 
-            Action::Withdraw => {
-                let withdraw_amount = payload.get_value();
-                self.withdraw(&mut state, customer_pubkey, withdraw_amount)?;
+            Action::Vote => {
+                let vote_id = payload.get_vote_id();
+                let value_to_vote = payload.get_value();
+                self.vote(&mut state, customer_pubkey, vote_id, value_to_vote)?;
             }
 
-            Action::Balance => {
-                let current_balance: u32 = self.balance(&mut state, customer_pubkey)?;
-
-            }
-
-            Action::Transfer => {
-                //Get beneficiary details from payload
-                let beneficiary_pubkey = match payload.get_beneficiary() {
-                    Some(v) => v.as_str(),
-                    None => {
-                        return Err(ApplyError::InvalidTransaction(String::from(
-                            "Action: Transfer. beneficiary account doesn't exist.",
-                        )));
-                    }
-                };
-
-                //Get transfer amount
-                let transfer_amount = payload.get_value();
-
-                self.transfer(
-                    &mut state,
-                    customer_pubkey,
-                    beneficiary_pubkey,
-                    transfer_amount,
-                )?;
+            Action::CloseVote => {
+                let vote_id = payload.get_vote_id();
+                self.close_vote(&mut state, vote_id)?;
             }
         }
 
@@ -154,82 +106,52 @@ impl TransactionHandler for SwTransactionHandler {
 }
 
 impl SwTransactions for SwTransactionHandler {
-    fn deposit(
-        &self,
-        state: &mut SwState,
-        customer_pubkey: &str,
-        deposit_amount: u32,
-    ) -> Result<(), ApplyError> {
-        let current_balance: u32 = self.balance(state, customer_pubkey)?;
-
-        let new_balance = current_balance + deposit_amount;
-
-        //Store new balance to state
-        state.set(customer_pubkey, new_balance)?;
-
+    fn create_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError> {
+        let vote = Vote::new(vote_id);
+        state.set_vote(vote_id, vote);
         Ok(())
     }
 
-    fn balance(&self, state: &mut SwState, customer_pubkey: &str) -> Result<u32, ApplyError> {
-        let current_balance: u32 = match state.get(customer_pubkey) {
+    fn vote(
+        &self,
+        state: &mut SwState,
+        customer_pubkey: &str,
+        vote_id: u32,
+        value: u32,
+    ) -> Result<(), ApplyError> {
+        let current_balance: u32 = match state.get_balance(customer_pubkey) {
             Ok(Some(v)) => v,
-            Ok(None) => {
-                0
-            }
+            Ok(None) => 0,
             Err(err) => return Err(err),
         };
 
-        Ok(current_balance)
-    }
-
-    fn withdraw(
-        &self,
-        state: &mut SwState,
-        customer_pubkey: &str,
-        withdraw_amount: u32,
-    ) -> Result<(), ApplyError> {
-        let current_balance: u32 = self.balance(state, customer_pubkey)?;
-
-        //Withdraw amount should not be greater than current account balance
-        if withdraw_amount > current_balance {
+        if value > current_balance {
             return Err(ApplyError::InvalidTransaction(String::from(
-                "Action: Withdraw amount is more than account balance.",
+                "You Don't have the credits for it",
             )));
+        }else{
+            state.set_balance(customer_pubkey, current_balance-value);
         }
 
-        //update balance
-        let new_balance = current_balance - withdraw_amount;
+        // Maybe no need for both errors, refactor!
+        let mut vote = match state.get_vote(vote_id) {
+            Ok(Some(v)) => v,
+            Ok(None) => return Err(ApplyError::InvalidTransaction(String::from(
+                "Deal with this later",
+            ))),
+            Err(err) => return Err(err),
+        };
 
-        //Store new balance to state
-        state.set(customer_pubkey, new_balance)?;
+        // missing parameters 
+        vote.agree_more(value);
+
+
+        state.set_vote( vote_id, vote);
 
         Ok(())
     }
 
-    fn transfer(
-        &self,
-        state: &mut SwState,
-        customer_pubkey: &str,
-        beneficiary_pubkey: &str,
-        transfer_amount: u32,
-    ) -> Result<(), ApplyError> {
-        //Get balance of customer
-        let current_balance: u32 = self.balance(state, customer_pubkey)?;
-
-        //Get beneficiary balance
-        let beneficiary_balance: u32 = self.balance(state, beneficiary_pubkey)?;
-
-        //Transfer amount should not be greater than current account balance
-        if transfer_amount > current_balance {
-            return Err(ApplyError::InvalidTransaction(String::from(
-                "Action: Transfer amount is more than customer account balance.",
-            )));
-        }
-
-        //Store new balance to state
-        state.set(customer_pubkey, current_balance - transfer_amount)?;
-        state.set(beneficiary_pubkey, beneficiary_balance + transfer_amount)?;
-
+    fn close_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError> {
         Ok(())
     }
 }
