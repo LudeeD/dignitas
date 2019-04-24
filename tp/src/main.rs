@@ -27,7 +27,7 @@ fn main() {
         )))
         .build();
 
-    let console_log_level = LevelFilter::Trace;
+    let console_log_level = LevelFilter::Info;
 
     let config = match Config::builder()
         .appender(Appender::builder().build("stdout", Box::new(stdout)))

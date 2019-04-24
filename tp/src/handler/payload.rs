@@ -32,6 +32,7 @@ pub struct SwPayload {
 
 impl SwPayload {
     pub fn new(payload_data: &[u8]) -> Result<Option<SwPayload>, ApplyError> {
+        info!("New payload ");
         let payload_string = match str::from_utf8(&payload_data) {
             Ok(s) => s,
             Err(_) => {
@@ -41,8 +42,12 @@ impl SwPayload {
             }
         };
 
+        info!("payload_string: {}", payload_string);
+
         //Dignitas payload is constructed as comma separated items
         let items: Vec<&str> = payload_string.split(",").collect();
+
+        info!("Items len: {}", items.len());
 
         if items.len() < 2 {
             return Err(ApplyError::InvalidTransaction(String::from(

@@ -56,6 +56,8 @@ impl TransactionHandler for SwTransactionHandler {
         request: &TpProcessRequest,
         context: &mut TransactionContext,
     ) -> Result<(), ApplyError> {
+
+        info!("Apply Function Called");
         let header = &request.header;
         let customer_pubkey = match &header.as_ref() {
             Some(s) => &s.signer_public_key,
@@ -83,6 +85,8 @@ impl TransactionHandler for SwTransactionHandler {
 
         let mut state = SwState::new(context);
 
+        debug!("Payload {} {}", payload.get_vote_id(), payload.get_value());
+
         match payload.get_action() {
             Action::CreateVote => {
                 let vote_id = payload.get_vote_id();
@@ -101,13 +105,14 @@ impl TransactionHandler for SwTransactionHandler {
             }
         }
 
+        info!("Apply Function Exited");
         Ok(())
     }
 }
 
 impl SwTransactions for SwTransactionHandler {
     fn create_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError> {
-        println!("create_vote called");
+        info!("Create Vote Called");
         let vote = Vote::new(vote_id);
         state.set_vote(vote_id, vote);
         Ok(())
