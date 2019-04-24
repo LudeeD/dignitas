@@ -1,6 +1,5 @@
 extern crate openssl;
 extern crate protobuf;
-extern crate reqwest;
 extern crate sawtooth_sdk;
 
 use std::fs::File;
@@ -103,13 +102,21 @@ pub fn submit_batchlist_to_rest_api(batch_list: BatchList) {
         .write_to_bytes()
         .expect("Unable to write batch list as bytes");
 
-    //let client = reqwest::Client::new();
-    //let res = client
-    //    .post("http://localhost:8008/batches")
-    //    .header("Content-Type", "application/octet-stream")
-    //    .body(raw_bytes)
-    //    .send();
-    let mut file = File::create("dignitas.batches").expect("Error creating file");
+    let client = reqwest::Client::new();
+    let res = client
+        .post("http://localhost:8008/batches")
+        .header("Content-Type", "application/octet-stream")
+        .body(raw_bytes)
+        .send();
+}
+
+pub fn create_batchlist_file(batch_list: BatchList, mut file: File) {
+    // Create request body, which in this case is batch list
+    let raw_bytes = batch_list
+        .write_to_bytes()
+        .expect("Unable to write batch list as bytes");
+
+//    let mut file = File::create("dignitas.batches").expect("Error creating file");
     file.write_all(&raw_bytes).expect("Error writing bytes");
 }
 
