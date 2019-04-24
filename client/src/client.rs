@@ -17,7 +17,7 @@ use sawtooth_sdk::{
     signing::{ PublicKey, Signer},
 };
 
-const VALIDATOR_REGISTRY: &str = "validator_registry";
+const VALIDATOR_REGISTRY: &str = "dignitas";
 const VALIDATOR_REGISTRY_VERSION: &str = "1.0";
 
 pub fn create_batch_list(batch: Batch) -> BatchList {
