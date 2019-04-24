@@ -7,6 +7,8 @@ use clap::{App, Arg, SubCommand};
 
 use clignitas;
 
+use sawtooth_sdk::signing::{create_context, Signer};
+
 fn main() {
 
     // Available Arguments
@@ -41,6 +43,13 @@ fn main() {
 
 
     let private_key = clignitas::key_from_file(file);
+
+    let context = create_context("secp256k1")
+        .expect("Unsupported algorithm");
+
+    let signer = Signer::new(context.as_ref(), private_key.as_ref());
+
+    clignitas::create_vote(&signer);
 
     println!("Done!");
 }
