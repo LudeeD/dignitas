@@ -30,10 +30,19 @@ impl Vote {
         if items.len() != 3 {
             return None;
         }
-        let mut g = Vote {
-            vote_id: items[0].to_string().parse().expect("Meu Deus"),
-            agree: items[1].to_string().parse().expect("Meu Deus"),
-            disagree: items[2].to_string().parse().expect("Meu Deus"),
+        let g = Vote {
+            vote_id: items[0]
+                .to_string()
+                .parse()
+                .expect("Failed to Parse Vote From String"),
+            agree: items[1]
+                .to_string()
+                .parse()
+                .expect("Failed to Parse Vote From String"),
+            disagree: items[2]
+                .to_string()
+                .parse()
+                .expect("Failed to Parse Vote From String"),
         };
         Some(g)
     }

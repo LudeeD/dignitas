@@ -107,6 +107,7 @@ impl TransactionHandler for SwTransactionHandler {
 
 impl SwTransactions for SwTransactionHandler {
     fn create_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError> {
+        println!("create_vote called");
         let vote = Vote::new(vote_id);
         state.set_vote(vote_id, vote);
         Ok(())

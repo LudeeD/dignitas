@@ -5,5 +5,7 @@ authors = ["LudeeD <lfssilva@ua.pt>"]
 edition = "2018"
 
 [dependencies]
-sawtooth-sdk = "0.2"
+log = "0.4"
+log4rs = "0.8"
 rust-crypto = "0.2.36"
+sawtooth-sdk = "0.2"
