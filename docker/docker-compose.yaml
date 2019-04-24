@@ -9,13 +9,6 @@ services:
       - validator
     entrypoint: settings-tp -vv -C tcp://validator:4004
 
-  intkey-tp-python:
-    image: hyperledger/sawtooth-intkey-tp-python:1.1
-    container_name: sawtooth-intkey-tp-python-default
-    depends_on:
-      - validator
-    entrypoint: intkey-tp-python -vv -C tcp://validator:4004
-
   validator:
     image: hyperledger/sawtooth-validator:1.1
     container_name: sawtooth-validator-default
