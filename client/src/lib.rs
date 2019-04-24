@@ -66,7 +66,7 @@ pub fn create_vote( signer : &Signer) {
     let transaction_header = create_transaction_header(
         &address,
         &address,
-        payload_hex.clone(),
+        payload_string.clone(),
         pubkey,
         nonce
     );
@@ -75,7 +75,7 @@ pub fn create_vote( signer : &Signer) {
     let transaction = client::create_transaction(
         &signer,
         transaction_header,
-        payload_hex,
+        payload_string,
     );
 
     // Create Batch Header / Batch
