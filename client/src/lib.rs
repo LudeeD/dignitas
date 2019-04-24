@@ -1,6 +1,7 @@
 // sawtooth sdk
 extern crate rand;
 extern crate sawtooth_sdk;
+extern crate reqwest;
 
 use sawtooth_sdk::signing::create_context;
 use sawtooth_sdk::signing::secp256k1::Secp256k1PrivateKey;
@@ -14,8 +15,7 @@ use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 
-mod client;
-use client::{create_transaction_header};
+mod tp_helper;
 
 pub fn generate_key() -> Box<PrivateKey> {
     println!("Creating and Storing a Key");
@@ -50,11 +50,16 @@ pub fn key_from_file(file_name: &str) -> Box<PrivateKey> {
     Box::new(private_key)
 }
 
-pub fn create_vote( signer : &Signer) {
+pub fn create_vote( private_key : Box<PrivateKey>, vote_id : u32, optional_file : Option<File>) {
+
+    let context = create_context("secp256k1")
+        .expect("Unsupported algorithm");
+
+    let signer = Signer::new(context.as_ref(), private_key.as_ref());
+
     //Construct Payload
-    let payload = vec![String::from("CreateVote"), String::from("1234")];
+    let payload = vec![String::from("CreateVote"), vote_id.to_string()];
     let payload_string : String = payload.join(",");
-    let payload_hex = client::to_hex_string(&payload_string.as_bytes().to_vec());
 
     let address = get_addresses(2, "pila");
 
@@ -63,36 +68,45 @@ pub fn create_vote( signer : &Signer) {
     let pubkey = signer.get_public_key().expect("Something went really wrong");
 
     // Create Transactio Header
-    let transaction_header = create_transaction_header(
+    let transaction_header = tp_helper::create_transaction_header(
         &address,
         &address,
         payload_string.clone(),
         pubkey,
         nonce
-    );
+        );
 
     // Create Transaction
-    let transaction = client::create_transaction(
+    let transaction = tp_helper::create_transaction(
         &signer,
         transaction_header,
         payload_string,
-    );
+        );
 
     // Create Batch Header / Batch
-    let batch = client::create_batch(
+    let batch = tp_helper::create_batch(
         &signer,
         transaction
-    );
+        );
 
     // Create Batch List
-    let batch_list = client::create_batch_list(
+    let batch_list = tp_helper::create_batch_list(
         batch
-    );
+        );
 
 
-    // Submit Batch
-    client::submit_batchlist_to_rest_api(batch_list);
+    // Handle BatchList
 
+    match optional_file {
+        Some(f) => {
+            println!("Going to write a file with this Batch List");
+            tp_helper::create_batchlist_file(batch_list, f);
+        },
+        None    => {
+            println!("Going to directly send to the API");
+            tp_helper::submit_batchlist_to_rest_api(batch_list);
+        }
+    }
 }
 
 fn get_addresses(vote_id: u32, pubkey: &str) -> Box<[String]> {
