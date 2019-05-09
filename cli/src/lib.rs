@@ -50,7 +50,7 @@ pub fn key_from_file(file_name: &str) -> Box<PrivateKey> {
     Box::new(private_key)
 }
 
-pub fn create_vote( private_key : Box<PrivateKey>, vote_id : u32, optional_file : Option<File>) {
+pub fn create_vote( private_key : Box<PrivateKey>, vote_id : u32, optional_file : Option<&str>) {
 
     let context = create_context("secp256k1")
         .expect("Unsupported algorithm");

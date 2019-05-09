@@ -18,6 +18,12 @@ fn main() {
         .takes_value(true)
         .help("key file");
 
+    let arg_output_file = Arg::with_name("output")
+        .short("o")
+        .long("output")
+        .takes_value(true)
+        .help("output file for batches");
+
     let arg_action = Arg::with_name("action")
         .short("a")
         .long("action")
@@ -45,6 +51,7 @@ fn main() {
         .arg(arg_key_file)
         .arg(arg_action)
         .arg(arg_value)
+        .arg(arg_output_file)
         .subcommand(genkey_subcmd)
         .get_matches();
 
@@ -53,6 +60,7 @@ fn main() {
     let file    = arguments.value_of("key").unwrap_or("client.key");
 
     if let Some(_arguments) = arguments.subcommand_matches("genkey"){
+        println!("NÂO chegou Aqui");
         // For now generating a key also ends the program
         let key = clignitas::generate_key();
         clignitas::key_to_file(key.as_ref(), file.to_string());
@@ -62,8 +70,9 @@ fn main() {
 
     let private_key = clignitas::key_from_file(file);
 
-    let file_batches = File::open("dignitas.batches").expect("Failed opening file");
-    clignitas::create_vote(private_key, value, Some(file_batches));
+    let file = arguments.value_of("output");
+
+    clignitas::create_vote(private_key, value, file);
 
     println!("Done!");
 }

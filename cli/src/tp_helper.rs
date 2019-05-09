@@ -110,13 +110,14 @@ pub fn submit_batchlist_to_rest_api(batch_list: BatchList) {
         .send();
 }
 
-pub fn create_batchlist_file(batch_list: BatchList, mut file: File) {
+// #TODO
+pub fn create_batchlist_file(batch_list: BatchList, file_name: &str) {
     // Create request body, which in this case is batch list
     let raw_bytes = batch_list
         .write_to_bytes()
         .expect("Unable to write batch list as bytes");
 
-//    let mut file = File::create("dignitas.batches").expect("Error creating file");
+    let mut file = File::create(file_name).expect("Error creating file");
     file.write_all(&raw_bytes).expect("Error writing bytes");
 }
 
