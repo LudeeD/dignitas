@@ -88,7 +88,7 @@ impl SwPayload {
         if items.len() == 3 {
             if items[2].is_empty() {
                 return Err(ApplyError::InvalidTransaction(String::from(
-                    "Beneficiary cannot be empty ",
+                    "Value cannot be empty ",
                 )));
             }
 
