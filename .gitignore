@@ -35,4 +35,4 @@ tags
 # End of https://www.gitignore.io/api/vim,rust
 
 *.key
-client/dignitas.batches
+*.batches
