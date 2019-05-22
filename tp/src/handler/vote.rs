@@ -53,7 +53,7 @@ impl Vote {
         Ok(())
     }
 
-    fn disagree_more(&mut self, value: u32) -> Result<(), ApplyError> {
+    pub fn disagree_more(&mut self, value: u32) -> Result<(), ApplyError> {
         info!("Function disagree_more : {}", value);
         self.disagree = self.disagree + value;
         Ok(())

@@ -1,6 +1,5 @@
 use sawtooth_sdk::messages::processor::TpProcessRequest;
-use sawtooth_sdk::processor::handler::ApplyError;
-use sawtooth_sdk::processor::handler::TransactionContext;
+use sawtooth_sdk::processor::handler::ApplyError; use sawtooth_sdk::processor::handler::TransactionContext;
 use sawtooth_sdk::processor::handler::TransactionHandler;
 
 use crate::handler::payload::Action;
@@ -15,16 +14,18 @@ pub struct SwTransactionHandler {
     namespaces: Vec<String>,
 }
 
-//Transactions in simple wallet
+//Transactions in dignitas
 trait SwTransactions {
     fn create_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError>;
+
     fn vote(
         &self,
         state: &mut SwState,
         customer_pubkey: &str,
         vote_id: u32,
-        value: u32,
+        value: i32,
     ) -> Result<(), ApplyError>;
+
     fn close_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError>;
 }
 
@@ -55,7 +56,7 @@ impl TransactionHandler for SwTransactionHandler {
         &self,
         request: &TpProcessRequest,
         context: &mut TransactionContext,
-    ) -> Result<(), ApplyError> {
+        ) -> Result<(), ApplyError> {
 
         info!("Apply Function Called");
         let header = &request.header;
@@ -63,8 +64,8 @@ impl TransactionHandler for SwTransactionHandler {
             Some(s) => &s.signer_public_key,
             None => {
                 return Err(ApplyError::InvalidTransaction(String::from(
-                    "Invalid header",
-                )));
+                            "Invalid header",
+                            )));
             }
         };
 
@@ -78,8 +79,8 @@ impl TransactionHandler for SwTransactionHandler {
             Some(x) => x,
             None => {
                 return Err(ApplyError::InvalidTransaction(String::from(
-                    "Request must contain a payload",
-                )));
+                            "Request must contain a payload",
+                            )));
             }
         };
 
@@ -111,6 +112,7 @@ impl TransactionHandler for SwTransactionHandler {
 }
 
 impl SwTransactions for SwTransactionHandler {
+
     fn create_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError> {
         info!("Create Vote Called");
         let vote = Vote::new(vote_id);
@@ -123,36 +125,54 @@ impl SwTransactions for SwTransactionHandler {
         state: &mut SwState,
         customer_pubkey: &str,
         vote_id: u32,
-        value: u32,
-    ) -> Result<(), ApplyError> {
-        let current_balance: u32 = match state.get_balance(customer_pubkey) {
+        value: i32,
+        ) -> Result<(), ApplyError> {
+
+        info!("Vote Called");
+
+        let current_balance: i32 = match state.get_balance(customer_pubkey) {
             Ok(Some(v)) => v,
-            Ok(None) => 0,
+            Ok(None) => {
+                // Means that the account is new
+                // Default Value applies and account is created
+                state.set_balance(customer_pubkey, 50);
+                // default value to be returned
+                50
+            },
             Err(err) => return Err(err),
         };
 
+        info!("Current Balance fetched");
+
+        let abs_value = value.abs();
+
         if value > current_balance {
             return Err(ApplyError::InvalidTransaction(String::from(
-                "You Don't have the credits for it",
-            )));
+                        "You Don't have the credits for it",
+                        )));
         }else{
-            state.set_balance(customer_pubkey, current_balance-value);
-        }
+            state.set_balance(customer_pubkey, current_balance-abs_value);
+        };
 
         // Maybe no need for both errors, refactor!
         let mut vote = match state.get_vote(vote_id) {
             Ok(Some(v)) => v,
             Ok(None) => return Err(ApplyError::InvalidTransaction(String::from(
-                "Deal with this later",
-            ))),
+                        "Deal with this later",
+                        ))),
             Err(err) => return Err(err),
         };
+        info!("Vote state fetched");
 
         // missing parameters 
-        vote.agree_more(value);
-
+        if value.is_positive() {
+            vote.agree_more(abs_value as u32);
+        }else{
+            vote.disagree_more(abs_value as u32);
+        };
 
         state.set_vote( vote_id, vote);
+        info!("Vote state updated");
 
         Ok(())
     }

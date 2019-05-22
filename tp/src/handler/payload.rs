@@ -27,7 +27,7 @@ impl fmt::Display for Action {
 pub struct SwPayload {
     action: Action,
     vote_id: u32,
-    value: u32,
+    value: i32,
 }
 
 impl SwPayload {
@@ -83,7 +83,7 @@ impl SwPayload {
             }
         };
 
-        let mut value: u32 = 0;
+        let mut value: i32 = 0;
 
         if items.len() == 3 {
             if items[2].is_empty() {
@@ -115,7 +115,7 @@ impl SwPayload {
         self.action
     }
 
-    pub fn get_value(&self) -> u32 {
+    pub fn get_value(&self) -> i32 {
         self.value
     }
 
