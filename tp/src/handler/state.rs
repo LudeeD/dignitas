@@ -21,14 +21,14 @@ pub fn get_wallets_prefix() -> String {
     //let mut sha = Sha512::new();
     //sha.input_str("wallets");
     //get_sw_prefix() + &sha.result_str()[..2].to_string()
-    "00".to_string()
+    get_sw_prefix() + &"00".to_string()
 }
 
 pub fn get_votes_prefix() -> String {
     //let mut sha = Sha512::new();
     //sha.input_str("votes");
     //get_sw_prefix() + &sha.result_str()[..2].to_string()
-    "01".to_string()
+    get_sw_prefix() + &"01".to_string()
 }
 
 //Dignitas State

@@ -149,8 +149,9 @@ fn get_addresses(vote_id: u32, pubkey: &str) -> Vec<String> {
     let votes_prefix = "01".to_string();
 
     let pubkeysha = calculate_sha_first_62(pubkey);
+    let voteidsha = calculate_sha_first_62(&vote_id.to_string());
 
-    let address_vote = prefix.clone()+&votes_prefix+&pubkeysha.clone();
+    let address_vote = prefix.clone()+&votes_prefix+&voteidsha;
     println!("Address Vote:   {}", address_vote);
     let address_wallet = prefix+&wallet_prefix+&pubkeysha;
     println!("Address Wallet: {}", address_wallet);
