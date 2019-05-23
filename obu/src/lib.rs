@@ -21,6 +21,22 @@ mod transaction_helper;
 
 use transaction_helper as tp;
 
+pub fn retrieve_dignitas(private_key_file : &str){
+    let private_key = key_from_file(private_key_file);
+
+    let context = create_context("secp256k1")
+        .expect("Unsupported algorithm");
+
+    let signer = Signer::new(context.as_ref(), private_key.as_ref());
+
+    let pubkey = signer.get_public_key().expect("Something went really wrong");
+
+    let address_wallet = get_addresses(1, &pubkey.as_hex()).get(1).expect("Impossible").clone();
+
+    comns::out::get_state(&address_wallet);
+
+}
+
 pub fn create_vote( private_key_file : &str, vote_id : u32) {
     println!("Going to Create a Vote");
 

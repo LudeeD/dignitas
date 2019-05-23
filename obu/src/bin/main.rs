@@ -6,6 +6,14 @@ extern crate rocket;
 use rocket::response::status;
 use rocket::http::RawStr;
 
+#[get("/balance")]
+fn get_balance() -> status::Accepted<()> {
+
+    obu::retrieve_dignitas("client.key");
+
+    status::Accepted::<()>(None)
+}
+
 #[get("/vote")]
 fn get_vote() -> status::Accepted<()> {
     status::Accepted::<()>(None)
@@ -36,7 +44,12 @@ fn post_vote_update(id: &RawStr) -> status::Accepted<()> {
 
 fn main() {
     rocket::ignite()
-        .mount("/api/v1", routes![get_vote, post_vote, get_vote_detail, post_vote_update])
+        .mount("/api/v1",
+               routes![ get_vote,
+                        post_vote,
+                        get_vote_detail,
+                        post_vote_update,
+                        get_balance,])
         .launch();
 }
 
