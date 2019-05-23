@@ -41,9 +41,26 @@ fn main() {
     let genkey_subcmd = SubCommand::with_name("genkey")
         .about("generates a key and writes to client.key");
 
+    let arg_unwallet = Arg::with_name("wallet")
+        .short("w")
+        .long("wallet")
+        .takes_value(true)
+        .help("wallet unwrapper");
+
+    let arg_unvotes = Arg::with_name("vote")
+        .short("v")
+        .long("votes")
+        .takes_value(true)
+        .help("votes unwrapper");
 
 
-    // Argument Parsing
+    let genkey_subcmd = SubCommand::with_name("unwrap")
+        .about("unwraps the content that are in the leaves")
+        .arg(arg_unwallet)
+        .arg(arg_unvotes);
+
+
+        // Argument Parsing
     let arguments = App::new("dignitas")
         .version("0.1")
         .author("Luís Silva")
@@ -67,6 +84,20 @@ fn main() {
         return
     }
 
+    if let Some(arguments) = arguments.subcommand_matches("unwrap"){
+        println!("UnWrapper Subcommand");
+
+        if arguments.is_present("wallet") {
+            let value = arguments.value_of("wallet").unwrap();
+            println!("UnWrap wallets: {}", &value);
+            clignitas::unwrap_balance(value);
+        } else if arguments.is_present("vote"){
+            let value  = arguments.value_of("vote").unwrap();
+            println!("UnWrap votes: {}", &value);
+            clignitas::unwrap_votes(value);
+        }
+        return
+    }
 
     let private_key = clignitas::key_from_file(file);
 

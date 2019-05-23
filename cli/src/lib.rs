@@ -1,7 +1,10 @@
 // sawtooth sdk
+extern crate base64;
 extern crate rand;
 extern crate sawtooth_sdk;
 extern crate reqwest;
+
+use base64::decode;
 
 use sawtooth_sdk::signing::create_context;
 use sawtooth_sdk::signing::secp256k1::Secp256k1PrivateKey;
@@ -16,6 +19,19 @@ use std::io::Read;
 use std::io::Write;
 
 mod tp_helper;
+
+pub fn unwrap_votes(vote: &str){
+    println!("Vote ID | Agree | Disagree");
+    let decoded = decode(vote).expect("Upsi");
+    println!("{}", String::from_utf8(decoded).expect("Upsi a dobrar"));
+}
+
+
+pub fn unwrap_balance(vote:  &str){
+    println!("Value");
+    let decoded = decode(vote).expect("Upsi");
+    println!("{}", String::from_utf8(decoded).expect("Upsi a dobrar"));
+}
 
 pub fn generate_key() -> Box<PrivateKey> {
     println!("Creating and Storing a Key");
