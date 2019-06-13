@@ -24,21 +24,39 @@ impl fmt::Display for Action {
     }
 }
 
-pub struct SwPayload {
+pub struct PayloadBuilder<'a>{
     action: Action,
-    vote_id: u32,
-    value: i32,
+    data  : Vec<&'a str>,
 }
 
-impl SwPayload {
-    pub fn new(payload_data: &[u8]) -> Result<Option<SwPayload>, ApplyError> {
-        info!("New payload ");
+// Pub values, but later refactor to getters
+pub struct PayloadCreateVote{
+    pub title: String,
+    pub info: String,
+    pub lat : f64,
+    pub lng : f64,
+    pub direction: f64
+}
+
+pub struct PayloadVote{
+    pub vote_id: String,
+    pub value: i64,
+}
+
+pub struct PayloadCloseVote{
+    pub vote_id: String,
+}
+
+impl<'a> PayloadBuilder<'a>{
+    pub fn new(payload_data: &[u8]) -> Result<PayloadBuilder, ApplyError> {
+        info!("New payload Builder");
+
         let payload_string = match str::from_utf8(&payload_data) {
             Ok(s) => s,
             Err(_) => {
                 return Err(ApplyError::InvalidTransaction(String::from(
-                    "Invalid payload serialization",
-                )));
+                            "Invalid payload serialization",
+                            )));
             }
         };
 
@@ -51,75 +69,47 @@ impl SwPayload {
 
         if items.len() < 2 {
             return Err(ApplyError::InvalidTransaction(String::from(
-                "Payload must have at least 2 arguments",
-            )));
+                        "Payload must have at least 2 arguments",
+                        )));
         }
 
-        let (action, vote_id) = (items[0], items[1]);
-
-        if action.is_empty() {
-            return Err(ApplyError::InvalidTransaction(String::from(
-                "Action is required",
-            )));
-        }
+        let action = items[0];
 
         let action = match action {
             "CreateVote" => Action::CreateVote,
-            "Vote" => Action::Vote,
-            "CloseVote" => Action::CloseVote,
-            _ => {
-                return Err(ApplyError::InvalidTransaction(String::from(
-                    "Invalid Action",
-                )));
-            }
+            "Vote" =>Action::Vote,
+            "CloseVote" =>Action::CloseVote,
+            _ => { return Err(ApplyError::InvalidTransaction(String::from( "Invalid Action",))) }
         };
 
-        let vote_id: u32 = match vote_id.parse() {
-            Ok(num) => num,
-            Err(_) => {
-                return Err(ApplyError::InvalidTransaction(String::from(
-                    "Missing integer value",
-                )));
-            }
-        };
-
-        let mut value: i32 = 0;
-
-        if items.len() == 3 {
-            if items[2].is_empty() {
-                return Err(ApplyError::InvalidTransaction(String::from(
-                    "Value cannot be empty ",
-                )));
-            }
-
-            value = match items[2].parse() {
-                Ok(num) => num,
-                Err(_) => {
-                    return Err(ApplyError::InvalidTransaction(String::from(
-                        "Missing integer value",
-                    )));
-                }
-            };
-        }
-
-        let payload = SwPayload {
-            action: action,
-            vote_id: vote_id,
-            value: value,
-        };
-
-        Ok(Some(payload))
+        Ok(PayloadBuilder{
+            action : action,
+            data : items
+        })
     }
 
     pub fn get_action(&self) -> Action {
         self.action
     }
 
-    pub fn get_value(&self) -> i32 {
-        self.value
+    pub fn create_vote_payload(&self) -> PayloadCreateVote{
+        PayloadCreateVote{
+            title:      self.data[3].to_string(),
+            info:       self.data[4].to_string(),
+            lat :       self.data[5].parse::<f64>().expect("Shait"),
+            lng :       self.data[6].parse::<f64>().expect("Shait"),
+            direction:  self.data[7].parse::<f64>().expect("Shait")
+        }
     }
-
-    pub fn get_vote_id(&self) -> u32 {
-        self.vote_id
+    pub fn vote_payload(&self) -> PayloadVote{
+        PayloadVote{
+            vote_id:    self.data[1].to_string(),
+            value:      self.data[2].parse::<i64>().expect("Shait")
+        }
+    }
+    pub fn close_vote_payload(&self) -> PayloadCloseVote{
+        PayloadCloseVote{
+            vote_id:    self.data[1].to_string()
+        }
     }
 }

@@ -9,3 +9,8 @@ log = "0.4"
 log4rs = "0.8"
 rust-crypto = "0.2.36"
 sawtooth-sdk = "0.3"
+
+serde = { version = "1.0", features = ["derive"] }
+serde_cbor = "0.9"
+
+geohash-16 = "0.1.0"

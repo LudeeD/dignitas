@@ -8,26 +8,17 @@ use std::str;
 use sawtooth_sdk::processor::handler::ApplyError;
 use sawtooth_sdk::processor::handler::TransactionContext;
 
+use geohash_16::{encode, decode, Coordinate};
+
 pub fn get_sw_prefix() -> String {
-    //let mut sha = Sha512::new();
-    //sha.input_str("dignitas");
-    //sha.result_str()[..6].to_string()
     "ce9618".to_string()
 }
 
-// This could be updated to only return the
-// values withouth being necessary to keep calculating them
 pub fn get_wallets_prefix() -> String {
-    //let mut sha = Sha512::new();
-    //sha.input_str("wallets");
-    //get_sw_prefix() + &sha.result_str()[..2].to_string()
     get_sw_prefix() + &"00".to_string()
 }
 
 pub fn get_votes_prefix() -> String {
-    //let mut sha = Sha512::new();
-    //sha.input_str("votes");
-    //get_sw_prefix() + &sha.result_str()[..2].to_string()
     get_sw_prefix() + &"01".to_string()
 }
 
@@ -41,19 +32,20 @@ impl<'a> SwState<'a> {
         SwState { context: context }
     }
 
-    fn calculate_address_wallets( name: &str ) -> String{
+    fn calculate_address_wallets( pubkey: &str ) -> String{
         let mut sha = Sha512::new();
-        sha.input_str(name);
+        sha.input_str(pubkey);
         get_wallets_prefix() + &sha.result_str()[..62].to_string()
     }
 
-    fn calculate_address_votes( name: &str ) -> String{
-        let mut sha = Sha512::new();
-        sha.input_str(name);
-        get_votes_prefix() + &sha.result_str()[..62].to_string()
+    fn calculate_address_votes( vote_id: String ) -> String{
+        let zero_vec : String = vec!['0';50].into_iter().collect();
+        let address = get_votes_prefix() + &vote_id + &zero_vec;
+        info!("{}", address);
+        address
     }
 
-    pub fn get_balance(&mut self, name: &str) -> Result<Option<i32>, ApplyError> {
+    pub fn get_balance(&mut self, name: &str) -> Result<Option<i64>, ApplyError> {
         let address = SwState::calculate_address_wallets(name);
         info!("Wallet Address: {}", address);
         let d = self.context.get_state_entry(&address)?;
@@ -68,7 +60,7 @@ impl<'a> SwState<'a> {
                     }
                 };
 
-                let value: i32 = match value_string.parse() {
+                let value: i64 = match value_string.parse() {
                     Ok(v) => v,
                     Err(_) => {
                         return Err(ApplyError::InvalidTransaction(String::from(
@@ -85,23 +77,28 @@ impl<'a> SwState<'a> {
         }
     }
 
-    pub fn set_balance(&mut self, name: &str, value: i32) -> Result<(), ApplyError> {
+    pub fn set_balance(&mut self, name: &str, value: i64) -> Result<(), ApplyError> {
         self.context
             .set_state_entry(SwState::calculate_address_wallets(name),value.to_string().into_bytes())
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
     }
 
-    pub fn set_vote(&mut self, vote_id: u32, v: Vote) -> Result<(), ApplyError>{
+    pub fn set_vote(&mut self, v: Vote) -> Result<(), ApplyError>{
         self.context
-            .set_state_entry(SwState::calculate_address_votes(&vote_id.to_string()),v.to_string().into_bytes())
+            .set_state_entry(
+                SwState::calculate_address_votes(v.id.clone()),
+                v.to_cbor_string().into_bytes()
+            )
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
 
     }
 
-    pub fn get_vote(&mut self, vote_id: u32) -> Result<Option<Vote>, ApplyError>{
-        let address = SwState::calculate_address_votes(&vote_id.to_string());
+    pub fn get_vote(&mut self, vote_id: String)
+        -> Result<Option<Vote>, ApplyError> {
+
+        let address = SwState::calculate_address_votes(vote_id);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
@@ -114,7 +111,7 @@ impl<'a> SwState<'a> {
                     }
                 };
 
-                let vote: Vote = match Vote::from_string(&value_string) {
+                let vote: Vote = match Vote::from_cbor_string(value_string) {
                     Some(v) => v,
                     None => {
                         return Err(ApplyError::InvalidTransaction(String::from(

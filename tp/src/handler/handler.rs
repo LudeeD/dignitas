@@ -3,7 +3,7 @@ use sawtooth_sdk::processor::handler::ApplyError; use sawtooth_sdk::processor::h
 use sawtooth_sdk::processor::handler::TransactionHandler;
 
 use crate::handler::payload::Action;
-use crate::handler::payload::SwPayload;
+use crate::handler::payload::{PayloadBuilder, PayloadCreateVote, PayloadVote, PayloadCloseVote};
 use crate::handler::state::get_sw_prefix;
 use crate::handler::state::SwState;
 use crate::handler::vote::Vote;
@@ -16,17 +16,18 @@ pub struct SwTransactionHandler {
 
 //Transactions in dignitas
 trait SwTransactions {
-    fn create_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError>;
+    fn create_vote(&self, state: &mut SwState,info : PayloadCreateVote) 
+        -> Result<(), ApplyError>;
 
     fn vote(
         &self,
         state: &mut SwState,
         customer_pubkey: &str,
-        vote_id: u32,
-        value: i32,
+        info: PayloadVote,
     ) -> Result<(), ApplyError>;
 
-    fn close_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError>;
+    fn close_vote(&self, state: &mut SwState, info: PayloadCloseVote)
+        -> Result<(), ApplyError>;
 }
 
 impl SwTransactionHandler {
@@ -69,42 +70,27 @@ impl TransactionHandler for SwTransactionHandler {
             }
         };
 
-        let payload = SwPayload::new(request.get_payload());
-        let payload = match payload {
+        let payload_builder = PayloadBuilder::new(request.get_payload());
+
+        let payload_builder = match payload_builder {
             Err(e) => return Err(e),
             Ok(payload) => payload,
         };
 
-        let payload = match payload {
-            Some(x) => x,
-            None => {
-                return Err(ApplyError::InvalidTransaction(String::from(
-                            "Request must contain a payload",
-                            )));
-            }
-        };
-
         let mut state = SwState::new(context);
 
-        debug!("Payload {} {}", payload.get_vote_id(), payload.get_value());
-
-        match payload.get_action() {
-            Action::CreateVote => {
-                let vote_id = payload.get_vote_id();
-                self.create_vote(&mut state, vote_id)?;
+        let payload = match payload_builder.get_action(){
+            Action::CreateVote =>{
+                self.create_vote(&mut state, payload_builder.create_vote_payload())
+            },
+            Action::Vote =>{
+                self.vote(&mut state, customer_pubkey,
+                          payload_builder.vote_payload())
+            },
+            Action::CloseVote =>{
+                self.close_vote(&mut state, payload_builder.close_vote_payload())
             }
-
-            Action::Vote => {
-                let vote_id = payload.get_vote_id();
-                let value_to_vote = payload.get_value();
-                self.vote(&mut state, customer_pubkey, vote_id, value_to_vote)?;
-            }
-
-            Action::CloseVote => {
-                let vote_id = payload.get_vote_id();
-                self.close_vote(&mut state, vote_id)?;
-            }
-        }
+        };
 
         info!("Apply Function Exited");
         Ok(())
@@ -113,10 +99,15 @@ impl TransactionHandler for SwTransactionHandler {
 
 impl SwTransactions for SwTransactionHandler {
 
-    fn create_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError> {
+    fn create_vote(&self, state: &mut SwState, info: PayloadCreateVote)
+        -> Result<(), ApplyError> {
+
         info!("Create Vote Called");
-        let vote = Vote::new(vote_id);
-        state.set_vote(vote_id, vote);
+
+        let vote = Vote::new( info.lat, info.lng, info.direction,
+                              &info.title, &info.info);
+
+        state.set_vote(vote);
         Ok(())
     }
 
@@ -124,13 +115,12 @@ impl SwTransactions for SwTransactionHandler {
         &self,
         state: &mut SwState,
         customer_pubkey: &str,
-        vote_id: u32,
-        value: i32,
+        info: PayloadVote
         ) -> Result<(), ApplyError> {
 
         info!("Vote Called");
 
-        let current_balance: i32 = match state.get_balance(customer_pubkey) {
+        let current_balance: i64 = match state.get_balance(customer_pubkey) {
             Ok(Some(v)) => v,
             Ok(None) => {
                 // Means that the account is new
@@ -144,9 +134,9 @@ impl SwTransactions for SwTransactionHandler {
 
         info!("Current Balance fetched");
 
-        let abs_value = value.abs();
+        let abs_value = info.value.abs();
 
-        if value > current_balance {
+        if abs_value > current_balance {
             return Err(ApplyError::InvalidTransaction(String::from(
                         "You Don't have the credits for it",
                         )));
@@ -154,8 +144,7 @@ impl SwTransactions for SwTransactionHandler {
             state.set_balance(customer_pubkey, current_balance-abs_value);
         };
 
-        // Maybe no need for both errors, refactor!
-        let mut vote = match state.get_vote(vote_id) {
+        let mut vote = match state.get_vote(info.vote_id) {
             Ok(Some(v)) => v,
             Ok(None) => return Err(ApplyError::InvalidTransaction(String::from(
                         "Deal with this later",
@@ -165,19 +154,20 @@ impl SwTransactions for SwTransactionHandler {
         info!("Vote state fetched");
 
         // missing parameters 
-        if value.is_positive() {
-            vote.agree_more(abs_value as u32);
+        if info.value.is_positive() {
+            vote.agree_more(abs_value as i64);
         }else{
-            vote.disagree_more(abs_value as u32);
+            vote.disagree_more(abs_value as i64);
         };
 
-        state.set_vote( vote_id, vote);
+        state.set_vote( vote );
         info!("Vote state updated");
 
         Ok(())
     }
 
-    fn close_vote(&self, state: &mut SwState, vote_id: u32) -> Result<(), ApplyError> {
+    fn close_vote(&self, state: &mut SwState, info: PayloadCloseVote)
+        -> Result<(), ApplyError> {
         Ok(())
     }
 }

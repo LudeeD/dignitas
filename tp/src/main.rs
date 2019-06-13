@@ -1,3 +1,5 @@
+extern crate geohash_16;
+
 extern crate sawtooth_sdk;
 
 #[macro_use]
