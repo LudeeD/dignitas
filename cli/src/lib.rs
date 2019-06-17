@@ -18,6 +18,8 @@ use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 
+use geohash_16::{encode, Coordinate};
+
 mod tp_helper;
 
 pub fn unwrap_votes(vote: &str){
@@ -25,7 +27,6 @@ pub fn unwrap_votes(vote: &str){
     let decoded = decode(vote).expect("Upsi");
     println!("{}", String::from_utf8(decoded).expect("Upsi a dobrar"));
 }
-
 
 pub fn unwrap_balance(vote:  &str){
     println!("Value");
@@ -66,7 +67,13 @@ pub fn key_from_file(file_name: &str) -> Box<PrivateKey> {
     Box::new(private_key)
 }
 
-pub fn create_vote( private_key : Box<PrivateKey>, vote_id : u32, optional_file : Option<&str>) {
+pub fn create_vote(     private_key : Box<PrivateKey>,
+                        title: String,
+                        info: String,
+                        lat:f64,
+                        lng:f64,
+                        dir:f64,
+                        optional_file : Option<&str>){
 
     let context = create_context("secp256k1")
         .expect("Unsupported algorithm");
@@ -74,14 +81,24 @@ pub fn create_vote( private_key : Box<PrivateKey>, vote_id : u32, optional_file 
     let signer = Signer::new(context.as_ref(), private_key.as_ref());
 
     //Construct Payload
-    let payload = vec![String::from("CreateVote"), vote_id.to_string()];
+    let payload = vec![ String::from("CreateVote"),
+    String::from(""),
+    String::from(""),
+    title,
+    info,
+    lat.to_string(),
+    lng.to_string(),
+    dir.to_string()
+    ];
+
     let payload_string : String = payload.join(",");
 
-    let address = get_addresses(2, "pila");
 
     let nonce = String::from("grrr");
 
     let pubkey = signer.get_public_key().expect("Something went really wrong");
+
+    let address = get_addresses(generate_id(lat, lng), "damn");
 
     // Create Transactio Header
     let transaction_header = tp_helper::create_transaction_header(
@@ -90,7 +107,7 @@ pub fn create_vote( private_key : Box<PrivateKey>, vote_id : u32, optional_file 
         payload_string.clone(),
         pubkey,
         nonce
-        );
+    );
 
     // Create Transaction
     let transaction = tp_helper::create_transaction(
@@ -103,12 +120,12 @@ pub fn create_vote( private_key : Box<PrivateKey>, vote_id : u32, optional_file 
     let batch = tp_helper::create_batch(
         &signer,
         transaction
-        );
+    );
 
     // Create Batch List
     let batch_list = tp_helper::create_batch_list(
         batch
-        );
+    );
 
 
     // Handle BatchList
@@ -125,48 +142,49 @@ pub fn create_vote( private_key : Box<PrivateKey>, vote_id : u32, optional_file 
     }
 }
 
-fn get_addresses(vote_id: u32, pubkey: &str) -> Box<[String]> {
+fn get_addresses(vote_id: String, pubkey: &str) -> Box<[String]> {
     // Get Addresses That Input depends On
     // Namely, the vote addres and user balance
 
     // Vote Address
 
-    let address_vote = calculate_address_votes(&vote_id.to_string());
+    let address_vote = calculate_address_votes(vote_id);
     let address_wallet = calculate_address_wallets(pubkey);
 
     let array = [address_vote, address_wallet];
     Box::new(array)
 }
 
-// REFACTOR XD
 pub fn get_sw_prefix() -> String {
-    let mut sha = Sha512::new();
-    sha.input_str("dignitas");
-    sha.result_str()[..6].to_string()
+    "ce9618".to_string()
 }
 
 pub fn get_wallets_prefix() -> String {
-    let mut sha = Sha512::new();
-    sha.input_str("wallets");
-    get_sw_prefix() + &sha.result_str()[..2].to_string()
+    get_sw_prefix() + &"00".to_string()
 }
 
 pub fn get_votes_prefix() -> String {
-    let mut sha = Sha512::new();
-    sha.input_str("votes");
-    get_sw_prefix() + &sha.result_str()[..2].to_string()
+    get_sw_prefix() + &"01".to_string()
 }
 
-fn calculate_address_wallets(name: &str) -> String {
+fn calculate_address_wallets( pubkey: &str ) -> String{
     let mut sha = Sha512::new();
-    sha.input_str(name);
+    sha.input_str(pubkey);
     get_wallets_prefix() + &sha.result_str()[..62].to_string()
 }
 
-fn calculate_address_votes(name: &str) -> String {
-    let mut sha = Sha512::new();
-    sha.input_str(name);
-    get_votes_prefix() + &sha.result_str()[..62].to_string()
+fn generate_id(lat: f64, lng:f64) -> String {
+    let c = Coordinate {x: lng, y: lat};
+    let c = Coordinate {x: lng, y: lat};
+    let encoded : String = encode(c, 12usize)
+        .expect("Generating ID");
+    encoded
+}
+
+fn calculate_address_votes( vote_id: String ) -> String{
+    let zero_vec : String = vec!['0';50].into_iter().collect();
+    let address = get_votes_prefix() + &vote_id + &zero_vec;
+    address
 }
 
 #[cfg(test)] // TODO Unit Tests

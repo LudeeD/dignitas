@@ -37,6 +37,31 @@ fn main() {
         .takes_value(true)
         .help("value to send to the DL");
 
+    let arg_lat = Arg::with_name("lat")
+        .long("lat")
+        .takes_value(true)
+        .help("latitude");
+
+    let arg_lng = Arg::with_name("lng")
+        .long("lng")
+        .takes_value(true)
+        .help("longitude");
+
+    let arg_dir = Arg::with_name("dir")
+        .long("dir")
+        .takes_value(true)
+        .help("longitude");
+
+    let arg_title = Arg::with_name("title")
+        .short("t")
+        .takes_value(true)
+        .help("title");
+
+    let arg_info = Arg::with_name("info")
+        .short("i")
+        .takes_value(true)
+        .help("more info");
+
     // Available Subcommands
     let genkey_subcmd = SubCommand::with_name("genkey")
         .about("generates a key and writes to client.key");
@@ -54,7 +79,7 @@ fn main() {
         .help("votes unwrapper");
 
 
-    let genkey_subcmd = SubCommand::with_name("unwrap")
+    let unwrap_subcmd = SubCommand::with_name("unwrap")
         .about("unwraps the content that are in the leaves")
         .arg(arg_unwallet)
         .arg(arg_unvotes);
@@ -69,7 +94,13 @@ fn main() {
         .arg(arg_action)
         .arg(arg_value)
         .arg(arg_output_file)
+        .arg(arg_lat)
+        .arg(arg_lng)
+        .arg(arg_title)
+        .arg(arg_info)
+        .arg(arg_dir)
         .subcommand(genkey_subcmd)
+        .subcommand(unwrap_subcmd)
         .get_matches();
 
     let action  = arguments.value_of("action").unwrap_or("CreateVote");
@@ -103,7 +134,24 @@ fn main() {
 
     let file = arguments.value_of("output");
 
-    clignitas::create_vote(private_key, value, file);
+    let title = arguments.value_of("title")
+        .unwrap_or("Title");
+    let info = arguments.value_of("info")
+        .unwrap_or("Info");
+    let lat = arguments.value_of("lat")
+        .unwrap_or("40.6405");
+    let lng = arguments.value_of("lng")
+        .unwrap_or("8.6538");
+    let dir = arguments.value_of("dir")
+        .unwrap_or("0.0");
+
+    clignitas::create_vote(private_key,
+                           title.to_string(),
+                           info.to_string(),
+                           lat.parse().expect("create vote"),
+                           lng.parse().expect("create vote"),
+                           dir.parse().expect("create vote"),
+                           file);
 
     println!("Done!");
 }
