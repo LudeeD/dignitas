@@ -2,8 +2,6 @@ extern crate openssl;
 extern crate protobuf;
 extern crate sawtooth_sdk;
 
-use crate::comns::out;
-
 use std::fs::File;
 use std::io::Write;
 
@@ -17,6 +15,8 @@ use sawtooth_sdk::{
     },
     signing::{ PublicKey, Signer},
 };
+
+use crate::comns::out as out;
 
 const VALIDATOR_REGISTRY: &str = "dignitas";
 const VALIDATOR_REGISTRY_VERSION: &str = "1.0";

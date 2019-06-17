@@ -1,3 +1,7 @@
+#![feature(proc_macro_hygiene, decl_macro)] // COMNS API
+#[macro_use] extern crate rocket;           // COMNS API
+#[macro_use] extern crate rocket_contrib;   // COMNS API
+
 extern crate sawtooth_sdk;
 extern crate protobuf;
 extern crate crypto;
@@ -16,10 +20,19 @@ use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 
-mod comns;
-mod transaction_helper;
+mod util;
+use util::transaction_helper as tp;
 
-use transaction_helper as tp;
+mod data;
+use data::votes::{Vote};
+
+mod comns;
+use comns::api::start_server as start_api;
+use comns::out;
+
+pub fn start_server(){
+    start_api();
+}
 
 pub fn retrieve_dignitas(private_key_file : &str){
     let private_key = key_from_file(private_key_file);
@@ -33,8 +46,7 @@ pub fn retrieve_dignitas(private_key_file : &str){
 
     let address_wallet = get_addresses(1, &pubkey.as_hex()).get(1).expect("Impossible").clone();
 
-    comns::out::get_state(&address_wallet);
-
+    //comns::out::get_state(&address_wallet);
 }
 
 pub fn create_vote( private_key_file : &str, vote_id : u32) {
@@ -91,7 +103,7 @@ pub fn create_vote( private_key_file : &str, vote_id : u32) {
         .expect("Unable to write batch list as bytes");
 
 
-    comns::out::send(raw_bytes);
+    out::send(raw_bytes);
 }
 
 pub fn vote( private_key_file : &str, vote_id : u32, value: i32){
@@ -148,7 +160,7 @@ pub fn vote( private_key_file : &str, vote_id : u32, value: i32){
         .expect("Unable to write batch list as bytes");
 
 
-    comns::out::send(raw_bytes);
+    out::send(raw_bytes);
 
 }
 
@@ -194,4 +206,33 @@ fn key_from_file(file_name: &str) -> Box<PrivateKey> {
         Secp256k1PrivateKey::from_hex(&key_hex_data).expect("Unable to generate private key");
 
     Box::new(private_key)
+}
+
+
+
+// DUMMY FUNCTIONS
+
+pub fn get_list_votes()
+    -> Vec<Vote>
+{
+    let mut list_of_votes =  Vec::new();
+    let mut id = String::from("id0001");
+    let mut lat = 40.633187;
+    let mut lng = -8.659501;
+    let mut dir = 21.22;
+    let mut title = "PIla";
+    let mut info = "PIla a dobrar";
+    list_of_votes.push(Vote::new(id, lat,lng,dir,title,info));
+
+    let r = out::get_state_address("ce961801");
+
+    let vote_encoded = r.data[0].data.clone();
+
+    println!("{:?}", vote_encoded);
+
+    let v = Vote::from_tp_response(vote_encoded);
+
+    println!("{:?}", v);
+
+    list_of_votes
 }
