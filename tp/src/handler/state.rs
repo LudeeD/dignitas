@@ -8,8 +8,6 @@ use std::str;
 use sawtooth_sdk::processor::handler::ApplyError;
 use sawtooth_sdk::processor::handler::TransactionContext;
 
-use geohash_16::{encode, decode, Coordinate};
-
 pub fn get_sw_prefix() -> String {
     "ce9618".to_string()
 }
@@ -88,7 +86,7 @@ impl<'a> SwState<'a> {
         self.context
             .set_state_entry(
                 SwState::calculate_address_votes(v.id.clone()),
-                v.to_cbor_string().into_bytes()
+                v.to_cbor().expect("upsi")
             )
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
         Ok(())
@@ -102,16 +100,7 @@ impl<'a> SwState<'a> {
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => {
-                let value_string = match String::from_utf8(packed) {
-                    Ok(v) => v,
-                    Err(_) => {
-                        return Err(ApplyError::InvalidTransaction(String::from(
-                            "Invalid UTF-8 sequence",
-                        )));
-                    }
-                };
-
-                let vote: Vote = match Vote::from_cbor_string(value_string) {
+                let vote: Vote = match Vote::from_cbor(packed) {
                     Some(v) => v,
                     None => {
                         return Err(ApplyError::InvalidTransaction(String::from(

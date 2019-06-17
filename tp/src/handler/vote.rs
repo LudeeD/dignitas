@@ -49,55 +49,23 @@ impl Vote {
 
     fn generate_id(lat: f64, lng:f64) -> String {
         let c = Coordinate {x: lng, y: lat};
-        let c = Coordinate {x: lng, y: lat};
-        let encoded : String = encode(c, 10usize)
+        let encoded : String = encode(c, 12usize)
             .expect("Generating ID");
+        info!("Size {}", encoded.len());
         encoded
     }
 
-    //pub fn to_string(&self) -> String {
-    //    let fields = vec![
-    //        self.vote_id.clone().to_string(),
-    //        self.agree.clone().to_string(),
-    //        self.disagree.clone().to_string(),
-    //    ];
-    //    fields.join(",")
-    //}
-
-    pub fn to_cbor_string(&self) -> String{
-        let ret = serde_cbor::to_vec(&self)
+    pub fn to_cbor(&self) -> Option<Vec<u8>> {
+        let ret: Vec<u8> = serde_cbor::to_vec(&self)
             .expect("to_cbor_string");
-        String::from_utf8(ret)
-            .expect("to_cbor_string")
+        Some(ret)
     }
 
-    pub fn from_cbor_string(vote_string: String) -> Option<Vote>{
-        let vote: Vote = serde_cbor::from_slice(&vote_string.into_bytes())
+    pub fn from_cbor(vote_bytes: Vec<u8>) -> Option<Vote>{
+        let vote: Vote = serde_cbor::from_slice(&vote_bytes)
             .expect("from_cbor_string");
         Some(vote)
     }
-
-    //pub fn from_string(vote_string: &str) -> Option<Vote> {
-    //    let items: Vec<&str> = vote_string.split(',').collect();
-    //    if items.len() != 3 {
-    //        return None;
-    //    }
-    //    let g = Vote {
-    //        vote_id: items[0]
-    //            .to_string()
-    //            .parse()
-    //            .expect("Failed to Parse Vote From String"),
-    //        agree: items[1]
-    //            .to_string()
-    //            .parse()
-    //            .expect("Failed to Parse Vote From String"),
-    //        disagree: items[2]
-    //            .to_string()
-    //            .parse()
-    //            .expect("Failed to Parse Vote From String"),
-    //    };
-    //    Some(g)
-    //}
 
     pub fn agree_more(&mut self, value: i64) -> Result<(), ApplyError> {
         info!("Function agree_more : {}", value);

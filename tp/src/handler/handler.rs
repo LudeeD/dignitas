@@ -79,7 +79,7 @@ impl TransactionHandler for SwTransactionHandler {
 
         let mut state = SwState::new(context);
 
-        let payload = match payload_builder.get_action(){
+        let _payload = match payload_builder.get_action(){
             Action::CreateVote =>{
                 self.create_vote(&mut state, payload_builder.create_vote_payload())
             },
