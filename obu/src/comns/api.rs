@@ -46,10 +46,9 @@ fn get_vote() -> Json<VoteResponse>{
 fn post_vote(body: Json<Transaction>)
     -> Json<TransactionResponse>
 {
-    println!("Create a new Vote");
+    println!("Received a Post To Create a New Vote");
 
     create_vote("client.key", body.payload.clone());
-    println!("{:?}", body);
 
     let response = TransactionResponse{status: "OK".to_string()};
     Json(response)

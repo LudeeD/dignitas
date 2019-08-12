@@ -165,5 +165,5 @@ fn main() {
                                 dir.parse().expect("create vote"),
                                 file);
 
-    println!("Done!");
+    println!("=END=");
 }

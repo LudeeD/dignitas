@@ -42,12 +42,10 @@ pub fn start_server(){
     start_api();
 }
 
-
-
 pub fn create_vote( private_key_file : &str,
                     payload: String )
 {
-    println!("Going to Create a Vote");
+    println!("Going to Create a Batch For the Received Vote");
 
     // Read private key of OBU
     let private_key = key_from_file(private_key_file);
@@ -57,27 +55,14 @@ pub fn create_vote( private_key_file : &str,
 
     let signer = Signer::new(context.as_ref(), private_key.as_ref());
 
-    // Create Transaction
-    // let mut transaction = Transaction::new();
-    // transaction.set_header(decode(&header).unwrap()[..].to_vec());
-    // transaction.set_header_signature(header_signature);
-    // transaction.set_payload(decode(&payload).unwrap()[..].to_vec());
-    //
     let mut transaction: Transaction =  protobuf::parse_from_bytes(&decode(&payload).unwrap()[..]).expect("omg, yes");
     let transaction_header : TransactionHeader = protobuf::parse_from_bytes(transaction.get_header()).expect("vai bater");
-
-    println!("transaction header \n{:?}", transaction_header);
-    println!(" ");
-    println!("transaction \n{:?}", transaction);
-    println!(" ");
 
     // Create Batch Header / Batch
     let batch = tp::create_batch(
         &signer,
         transaction
         );
-
-    println!("batch \n{:?}", batch);
 
     // Create Batch List
     let batch_list = tp::create_batch_list(
@@ -87,7 +72,6 @@ pub fn create_vote( private_key_file : &str,
     let raw_bytes = batch_list
         .write_to_bytes()
         .expect("Unable to write batch list as bytes");
-
 
     out::send(raw_bytes);
 }

@@ -1,5 +1,3 @@
-extern crate base64;
-
 use serde::{Serialize, Deserialize};
 
 #[derive(Deserialize, Debug)]
