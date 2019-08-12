@@ -6,10 +6,10 @@ use std::time::Instant;
 use self::base64::decode;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Location {
-  lat: f64,
-  lng: f64,
-  direction: f64,
+pub struct Location {
+  pub lat: f64,
+  pub lng: f64,
+  pub direction: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -37,11 +37,14 @@ pub fn create_batch(signer: &Signer, transaction: Transaction) -> Batch {
         .get_public_key()
         .expect("Unable to get public key")
         .as_hex();
+
     let transaction_ids = vec![transaction.clone()]
         .iter()
         .map(|trans| String::from(trans.get_header_signature()))
         .collect();
+
     batch_header.set_transaction_ids(RepeatedField::from_vec(transaction_ids));
+    println!("signer public_key for batch {}", public_key);
     batch_header.set_signer_public_key(public_key);
 
     // Construct Batch
@@ -72,6 +75,7 @@ pub fn create_transaction_header(
     transaction_header.set_nonce(nonce);
     transaction_header.set_payload_sha512(to_hex_string(&sha512(&payload.as_bytes()).to_vec()));
     transaction_header.set_signer_public_key(public_key.as_hex());
+    println!("pls - {}",public_key.as_hex());
     transaction_header.set_batcher_public_key(public_key.as_hex());
     transaction_header.set_inputs(RepeatedField::from_vec(input_addresses.to_vec()));
     transaction_header.set_outputs(RepeatedField::from_vec(output_addresses.to_vec()));

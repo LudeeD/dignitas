@@ -7,7 +7,7 @@ use serde_json::{Result, Value};
 
 use crate::data::tponses::RootInterfaceStateResponse;
 
-const api_url : &str = "http://localhost:8008";
+const api_url : &str = "http://172.20.0.3:8008";
 
 pub fn send( data: Vec<u8> ){
     let client = reqwest::Client::new();

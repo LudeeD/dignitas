@@ -5,26 +5,34 @@
 extern crate sawtooth_sdk;
 extern crate protobuf;
 extern crate crypto;
+extern crate base64;
 
 use sawtooth_sdk::signing::create_context;
 use sawtooth_sdk::signing::secp256k1::Secp256k1PrivateKey;
 use sawtooth_sdk::signing::PrivateKey;
 use sawtooth_sdk::signing::Signer;
 
+use sawtooth_sdk::messages::transaction::Transaction;
+use sawtooth_sdk::messages::transaction::TransactionHeader;
+
 use protobuf::Message;
 
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
 
+use base64::decode;
+
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
+use std::str;
 
 mod util;
 use util::transaction_helper as tp;
 
 mod data;
 use data::votes::{Vote};
+use data::balance::{Balance};
 
 mod comns;
 use comns::api::start_server as start_api;
@@ -34,64 +42,42 @@ pub fn start_server(){
     start_api();
 }
 
-pub fn retrieve_dignitas(private_key_file : &str){
-    let private_key = key_from_file(private_key_file);
 
-    let context = create_context("secp256k1")
-        .expect("Unsupported algorithm");
 
-    let signer = Signer::new(context.as_ref(), private_key.as_ref());
-
-    let pubkey = signer.get_public_key().expect("Something went really wrong");
-
-    let address_wallet = get_addresses(1, &pubkey.as_hex()).get(1).expect("Impossible").clone();
-
-    //comns::out::get_state(&address_wallet);
-}
-
-pub fn create_vote( private_key_file : &str, vote_id : u32) {
+pub fn create_vote( private_key_file : &str,
+                    payload: String )
+{
     println!("Going to Create a Vote");
 
-    // Read private key
+    // Read private key of OBU
     let private_key = key_from_file(private_key_file);
 
     let context = create_context("secp256k1")
         .expect("Unsupported algorithm");
 
-
     let signer = Signer::new(context.as_ref(), private_key.as_ref());
 
-    let pubkey = signer.get_public_key().expect("Something went really wrong");
-
-    //Construct Payload
-    let payload = vec![String::from("CreateVote"), vote_id.to_string()];
-    let payload_string : String = payload.join(",");
-
-    let address = get_addresses(vote_id, &pubkey.as_hex());
-
-    let nonce = String::from("grrr");
-
-    // Create Transactio Header
-    let transaction_header = tp::create_transaction_header(
-        &address,
-        &address,
-        payload_string.clone(),
-        pubkey,
-        nonce
-        );
-
     // Create Transaction
-    let transaction = tp::create_transaction(
-        &signer,
-        transaction_header,
-        payload_string,
-        );
+    // let mut transaction = Transaction::new();
+    // transaction.set_header(decode(&header).unwrap()[..].to_vec());
+    // transaction.set_header_signature(header_signature);
+    // transaction.set_payload(decode(&payload).unwrap()[..].to_vec());
+    //
+    let mut transaction: Transaction =  protobuf::parse_from_bytes(&decode(&payload).unwrap()[..]).expect("omg, yes");
+    let transaction_header : TransactionHeader = protobuf::parse_from_bytes(transaction.get_header()).expect("vai bater");
+
+    println!("transaction header \n{:?}", transaction_header);
+    println!(" ");
+    println!("transaction \n{:?}", transaction);
+    println!(" ");
 
     // Create Batch Header / Batch
     let batch = tp::create_batch(
         &signer,
         transaction
         );
+
+    println!("batch \n{:?}", batch);
 
     // Create Batch List
     let batch_list = tp::create_batch_list(
@@ -106,7 +92,7 @@ pub fn create_vote( private_key_file : &str, vote_id : u32) {
     out::send(raw_bytes);
 }
 
-pub fn vote( private_key_file : &str, vote_id : u32, value: i32){
+pub fn vote( private_key_file : &str, payload: String){
     println!("Going to Vote");
 
     // Read private key
@@ -118,31 +104,9 @@ pub fn vote( private_key_file : &str, vote_id : u32, value: i32){
 
     let signer = Signer::new(context.as_ref(), private_key.as_ref());
 
-    let pubkey = signer.get_public_key().expect("Something went really wrong");
+    let mut transaction: Transaction =  protobuf::parse_from_bytes(&decode(&payload).unwrap()[..]).expect("omg, yes");
+    let transaction_header : TransactionHeader = protobuf::parse_from_bytes(transaction.get_header()).expect("vai bater");
 
-    //Construct Payload
-    let payload = vec![String::from("Vote"), vote_id.to_string(), value.to_string()];
-    let payload_string : String = payload.join(",");
-
-    let address = get_addresses(vote_id, &pubkey.as_hex());
-
-    let nonce = String::from("grrr");
-
-    // Create Transactio Header
-    let transaction_header = tp::create_transaction_header(
-        &address,
-        &address,
-        payload_string.clone(),
-        pubkey,
-        nonce
-        );
-
-    // Create Transaction
-    let transaction = tp::create_transaction(
-        &signer,
-        transaction_header,
-        payload_string,
-        );
 
     // Create Batch Header / Batch
     let batch = tp::create_batch(
@@ -208,31 +172,27 @@ fn key_from_file(file_name: &str) -> Box<PrivateKey> {
     Box::new(private_key)
 }
 
-
-
-// DUMMY FUNCTIONS
-
-pub fn get_list_votes()
-    -> Vec<Vote>
-{
+pub fn get_list_votes()-> Vec<Vote> {
     let mut list_of_votes =  Vec::new();
-    let mut id = String::from("id0001");
-    let mut lat = 40.633187;
-    let mut lng = -8.659501;
-    let mut dir = 21.22;
-    let mut title = "PIla";
-    let mut info = "PIla a dobrar";
-    list_of_votes.push(Vote::new(id, lat,lng,dir,title,info));
 
     let r = out::get_state_address("ce961801");
 
-    let vote_encoded = r.data[0].data.clone();
-
-    println!("{:?}", vote_encoded);
-
-    let v = Vote::from_tp_response(vote_encoded);
-
-    println!("{:?}", v);
+    for data in &r.data{
+        let vote_data = data.data.clone();
+        list_of_votes.push(Vote::from_tp_response(vote_data));
+    }
 
     list_of_votes
+}
+
+pub fn retrieve_dignitas(wallet : &str) -> Balance{
+
+    let r = out::get_state_address(wallet);
+    let mut balance = Balance{value: 0};
+
+    if(r.data.len() != 0){
+        balance = Balance::from_tp_response(r.data[0].data.clone());
+    }
+
+    return balance
 }
