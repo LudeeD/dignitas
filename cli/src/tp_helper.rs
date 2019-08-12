@@ -4,6 +4,7 @@ extern crate sawtooth_sdk;
 
 use std::fs::File;
 use std::io::Write;
+use rand::prelude::*;
 
 use openssl::sha::sha512;
 
@@ -15,6 +16,10 @@ use sawtooth_sdk::{
     },
     signing::{ PublicKey, Signer},
 };
+
+use base64::{encode, decode};
+
+use serde_json::json;
 
 const VALIDATOR_REGISTRY: &str = "dignitas";
 const VALIDATOR_REGISTRY_VERSION: &str = "1.0";
@@ -57,23 +62,26 @@ pub fn create_batch(signer: &Signer, transaction: Transaction) -> Batch {
 }
 
 pub fn create_transaction_header(
-    input_addresses: &[String],
-    output_addresses: &[String],
-    payload: String,
-    public_key: Box<PublicKey>,
-    nonce: String,
+    input_addresses:    &[String],
+    output_addresses:   &[String],
+    payload:            String,
+    public_key:         Box<PublicKey>,
+    batcher_public_key: Box<PublicKey>,
 ) -> TransactionHeader {
-    // Construct transaction header
+    let mut rng = rand::thread_rng();
+    let nonce: f64 = rng.gen();
+    let nonce_string: String = nonce.to_string();
+
     let mut transaction_header = TransactionHeader::new();
     transaction_header.set_family_name(VALIDATOR_REGISTRY.to_string());
     transaction_header.set_family_version(VALIDATOR_REGISTRY_VERSION.to_string());
-    transaction_header.set_nonce(nonce);
+    transaction_header.set_nonce(nonce_string);
     transaction_header.set_payload_sha512(to_hex_string(&sha512(&payload.as_bytes()).to_vec()));
     transaction_header.set_signer_public_key(public_key.as_hex());
-    transaction_header.set_batcher_public_key(public_key.as_hex());
+    transaction_header.set_batcher_public_key(batcher_public_key.as_hex());
     transaction_header.set_inputs(RepeatedField::from_vec(input_addresses.to_vec()));
     transaction_header.set_outputs(RepeatedField::from_vec(output_addresses.to_vec()));
-    println!("Que nojeo");
+
     transaction_header
 }
 
@@ -96,24 +104,31 @@ pub fn create_transaction(
     transaction
 }
 
-pub fn submit_batchlist_to_rest_api(batch_list: BatchList) {
+pub fn submit_transaction_to_obu_api(transaction: Transaction) {
     // Create request body, which in this case is batch list
-    let raw_bytes = batch_list
+    let raw_bytes = transaction
         .write_to_bytes()
         .expect("Unable to write batch list as bytes");
 
+    let encoded = encode(&raw_bytes);
+
+    let post = json!({
+        "id": 0,
+        "payload": encoded
+    });
+
     let client = reqwest::Client::new();
-    let res = client
-        .post("http://localhost:8008/batches")
-        .header("Content-Type", "application/octet-stream")
-        .body(raw_bytes)
+    let _res = client
+        .post("http://127.0.0.1:8000/api/v1/vote")
+        .header("Content-Type", "application/json")
+        .body(post.to_string())
         .send();
 }
 
 // #TODO
-pub fn create_batchlist_file(batch_list: BatchList, file_name: &str) {
+pub fn create_transaction_file(transaction: Transaction, file_name: &str) {
     // Create request body, which in this case is batch list
-    let raw_bytes = batch_list
+    let raw_bytes = transaction
         .write_to_bytes()
         .expect("Unable to write batch list as bytes");
 

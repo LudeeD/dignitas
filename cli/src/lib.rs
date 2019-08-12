@@ -1,6 +1,5 @@
 // sawtooth sdk
 extern crate base64;
-extern crate rand;
 extern crate sawtooth_sdk;
 extern crate reqwest;
 
@@ -8,6 +7,8 @@ use base64::decode;
 
 use sawtooth_sdk::signing::create_context;
 use sawtooth_sdk::signing::secp256k1::Secp256k1PrivateKey;
+use sawtooth_sdk::signing::secp256k1::Secp256k1PublicKey;
+use sawtooth_sdk::signing::PublicKey;
 use sawtooth_sdk::signing::PrivateKey;
 use sawtooth_sdk::signing::Signer;
 
@@ -17,8 +18,6 @@ use crypto::sha2::Sha512;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
-
-use geohash_16::{encode, Coordinate};
 
 mod tp_helper;
 
@@ -46,13 +45,35 @@ pub fn generate_key() -> Box<PrivateKey> {
 }
 
 pub fn key_to_file(private_key: &PrivateKey, file_name: String) {
-    let mut file = File::create(file_name).expect("Failed creating file");
+    let mut file_priv = File::create(file_name.clone()).expect("Failed creating file");
 
-    file.write_all(private_key.as_hex().as_bytes())
+    let file_name_pub = format!("pub.{}", &file_name);
+
+    let mut file_pub = File::create(file_name_pub).expect("Failed creating file");
+
+    let context = create_context("secp256k1")
+        .expect("Unsupported algorithm");
+
+    let signer = Signer::new(context.as_ref(), private_key);
+
+    let pubkey = signer.get_public_key().expect("Fuck");
+
+    file_priv.write_all(private_key.as_hex().as_bytes())
+        .expect("Failed writing to file");
+
+    file_pub.write_all(pubkey.as_hex().as_bytes())
         .expect("Failed writing to file");
 }
 
-pub fn key_from_file(file_name: &str) -> Box<PrivateKey> {
+pub fn pub_key_from_hex(hex_string: &str) -> Box<PublicKey> {
+    let key =
+        Secp256k1PublicKey::from_hex(hex_string)
+        .expect("Unable to Generate Pub Key from Hex");
+
+    Box::new(key)
+}
+
+pub fn priv_key_from_file(file_name: &str) -> Box<PrivateKey> {
 
     let mut key_hex_data = String::new();
 
@@ -67,38 +88,37 @@ pub fn key_from_file(file_name: &str) -> Box<PrivateKey> {
     Box::new(private_key)
 }
 
-pub fn create_vote(     private_key : Box<PrivateKey>,
-                        title: String,
-                        info: String,
-                        lat:f64,
-                        lng:f64,
-                        dir:f64,
-                        optional_file : Option<&str>){
+pub fn create_vote_obu(private_key : Box<PrivateKey>,
+                       batcher_key : Box<PublicKey>,
+                       title: String,
+                       info: String,
+                       lat:f64,
+                       lng:f64,
+                       dir:f64,
+                       optional_file : Option<&str>)
+{
+
+    //Construct Payload
+    let payload = vec![ String::from("CreateVote"),
+                        String::from(""),
+                        String::from(""),
+                        title,
+                        info,
+                        lat.to_string(),
+                        lng.to_string(),
+                        dir.to_string()
+    ];
+
+    let payload_string : String = payload.join(",");
 
     let context = create_context("secp256k1")
         .expect("Unsupported algorithm");
 
     let signer = Signer::new(context.as_ref(), private_key.as_ref());
 
-    //Construct Payload
-    let payload = vec![ String::from("CreateVote"),
-    String::from(""),
-    String::from(""),
-    title,
-    info,
-    lat.to_string(),
-    lng.to_string(),
-    dir.to_string()
-    ];
-
-    let payload_string : String = payload.join(",");
-
-
-    let nonce = String::from("grrr");
-
     let pubkey = signer.get_public_key().expect("Something went really wrong");
 
-    let address = get_addresses(generate_id(lat, lng), "damn");
+    let address = get_addresses(&pubkey.as_hex());
 
     // Create Transactio Header
     let transaction_header = tp_helper::create_transaction_header(
@@ -106,7 +126,7 @@ pub fn create_vote(     private_key : Box<PrivateKey>,
         &address,
         payload_string.clone(),
         pubkey,
-        nonce
+        batcher_key
     );
 
     // Create Transaction
@@ -116,43 +136,17 @@ pub fn create_vote(     private_key : Box<PrivateKey>,
         payload_string,
         );
 
-    // Create Batch Header / Batch
-    let batch = tp_helper::create_batch(
-        &signer,
-        transaction
-    );
-
-    // Create Batch List
-    let batch_list = tp_helper::create_batch_list(
-        batch
-    );
-
-
-    // Handle BatchList
-
     match optional_file {
         Some(f) => {
             println!("Going to write a file with this Batch List");
-            tp_helper::create_batchlist_file(batch_list, f);
+            tp_helper::create_transaction_file(transaction, f);
         },
         None    => {
-            println!("Going to directly send to the API");
-            tp_helper::submit_batchlist_to_rest_api(batch_list);
+            println!("Sending Vote to OBU...");
+            tp_helper::submit_transaction_to_obu_api(transaction);
+            println!("Done!");
         }
     }
-}
-
-fn get_addresses(vote_id: String, pubkey: &str) -> Box<[String]> {
-    // Get Addresses That Input depends On
-    // Namely, the vote addres and user balance
-
-    // Vote Address
-
-    let address_vote = calculate_address_votes(vote_id);
-    let address_wallet = calculate_address_wallets(pubkey);
-
-    let array = [address_vote, address_wallet];
-    Box::new(array)
 }
 
 pub fn get_sw_prefix() -> String {
@@ -173,19 +167,10 @@ fn calculate_address_wallets( pubkey: &str ) -> String{
     get_wallets_prefix() + &sha.result_str()[..62].to_string()
 }
 
-fn generate_id(lat: f64, lng:f64) -> String {
-    let c = Coordinate {x: lng, y: lat};
-    let c = Coordinate {x: lng, y: lat};
-    let encoded : String = encode(c, 12usize)
-        .expect("Generating ID");
-    encoded
-}
+fn get_addresses(pubkey: &str) -> Box<[String]> {
+    let address_vote = get_votes_prefix();
+    let address_wallet = calculate_address_wallets(pubkey);
 
-fn calculate_address_votes( vote_id: String ) -> String{
-    let zero_vec : String = vec!['0';50].into_iter().collect();
-    let address = get_votes_prefix() + &vote_id + &zero_vec;
-    address
+    let array = [address_vote, address_wallet];
+    Box::new(array)
 }
-
-#[cfg(test)] // TODO Unit Tests
-mod tests {}

@@ -7,8 +7,6 @@ use clap::{App, Arg, SubCommand};
 
 use clignitas;
 
-use std::fs::File;
-
 fn main() {
 
     // Available Arguments
@@ -17,6 +15,11 @@ fn main() {
         .long("key")
         .takes_value(true)
         .help("key file");
+
+    let arg_obu_pubk = Arg::with_name("obu")
+        .long("obu")
+        .takes_value(true)
+        .help("obu hex pub key");
 
     let arg_output_file = Arg::with_name("output")
         .short("o")
@@ -40,11 +43,13 @@ fn main() {
     let arg_lat = Arg::with_name("lat")
         .long("lat")
         .takes_value(true)
+        .allow_hyphen_values(true)
         .help("latitude");
 
     let arg_lng = Arg::with_name("lng")
         .long("lng")
         .takes_value(true)
+        .allow_hyphen_values(true)
         .help("longitude");
 
     let arg_dir = Arg::with_name("dir")
@@ -99,6 +104,7 @@ fn main() {
         .arg(arg_title)
         .arg(arg_info)
         .arg(arg_dir)
+        .arg(arg_obu_pubk)
         .subcommand(genkey_subcmd)
         .subcommand(unwrap_subcmd)
         .get_matches();
@@ -130,7 +136,7 @@ fn main() {
         return
     }
 
-    let private_key = clignitas::key_from_file(file);
+    let private_key = clignitas::priv_key_from_file(file);
 
     let file = arguments.value_of("output");
 
@@ -145,13 +151,19 @@ fn main() {
     let dir = arguments.value_of("dir")
         .unwrap_or("0.0");
 
-    clignitas::create_vote(private_key,
-                           title.to_string(),
-                           info.to_string(),
-                           lat.parse().expect("create vote"),
-                           lng.parse().expect("create vote"),
-                           dir.parse().expect("create vote"),
-                           file);
+    let obu_pk = arguments.value_of("obu")
+        .unwrap_or("02381caa0892d913daa3c4856a4f9b665931964b3fc630ef9dd5edbd8a27952f7e");
+
+    let batcher_key = clignitas::pub_key_from_hex(obu_pk);
+
+    clignitas::create_vote_obu( private_key,
+                                batcher_key,
+                                title.to_string(),
+                                info.to_string(),
+                                lat.parse().expect("create vote"),
+                                lng.parse().expect("create vote"),
+                                dir.parse().expect("create vote"),
+                                file);
 
     println!("Done!");
 }
