@@ -83,6 +83,8 @@ impl<'a> SwState<'a> {
     }
 
     pub fn set_vote(&mut self, v: Vote) -> Result<(), ApplyError>{
+        // Check For a Existing Vote #TODO
+
         self.context
             .set_state_entry(
                 SwState::calculate_address_votes(v.id.clone()),

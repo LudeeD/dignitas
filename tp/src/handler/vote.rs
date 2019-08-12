@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::time::Instant;
+use std::time::SystemTime;
 use sawtooth_sdk::processor::handler::ApplyError;
 
 use geohash_16::{encode, Coordinate};
@@ -34,16 +34,17 @@ pub struct Vote {
 
 impl Vote {
     pub fn new(lat: f64, lng:f64, dir:f64, title:&str, info:&str) -> Vote {
+        let time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("Error Creating Timestamp");
         Vote {
             id: Vote::generate_id(lat, lng),
-            timestamp : Instant::now().elapsed().as_secs(),
+            timestamp : time.as_secs(),
             location: Location { lat: lat, lng:lng, direction: dir},
             title: title.to_string(),
             info: info.to_string(),
             status: Status{ _type: "OPEN".to_string(),
                             _true:0,
                             _false:0,
-                            verdict: "".to_string() }
+                            verdict: "UNRESOLVED".to_string() }
        }
     }
 
