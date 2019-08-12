@@ -107,7 +107,7 @@ impl SwTransactions for SwTransactionHandler {
         let vote = Vote::new( info.lat, info.lng, info.direction,
                               &info.title, &info.info);
 
-        state.set_vote(vote);
+        state.set_vote(vote).expect("Something Went Wrong");
         Ok(())
     }
 
@@ -125,7 +125,7 @@ impl SwTransactions for SwTransactionHandler {
             Ok(None) => {
                 // Means that the account is new
                 // Default Value applies and account is created
-                state.set_balance(customer_pubkey, 50);
+                state.set_balance(customer_pubkey, 50).expect("something went wrong!");
                 // default value to be returned
                 50
             },
@@ -141,7 +141,7 @@ impl SwTransactions for SwTransactionHandler {
                         "You Don't have the credits for it",
                         )));
         }else{
-            state.set_balance(customer_pubkey, current_balance-abs_value);
+            state.set_balance(customer_pubkey, current_balance-abs_value).expect("Something Went Wrong");
         };
 
         let mut vote = match state.get_vote(info.vote_id) {
@@ -155,12 +155,12 @@ impl SwTransactions for SwTransactionHandler {
 
         // missing parameters 
         if info.value.is_positive() {
-            vote.agree_more(abs_value as i64);
+            vote.agree_more(abs_value as i64).expect("Something Went Wrong");
         }else{
-            vote.disagree_more(abs_value as i64);
+            vote.disagree_more(abs_value as i64).expect("Something Went Wrong");
         };
 
-        state.set_vote( vote );
+        state.set_vote( vote ).expect("Something Went Wrong");
         info!("Vote state updated");
 
         Ok(())
