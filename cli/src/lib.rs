@@ -1,26 +1,28 @@
-// sawtooth sdk
-extern crate base64;
-extern crate sawtooth_sdk;
-extern crate reqwest;
-
-use base64::decode;
-
-use sawtooth_sdk::signing::create_context;
-use sawtooth_sdk::signing::secp256k1::Secp256k1PrivateKey;
-use sawtooth_sdk::signing::secp256k1::Secp256k1PublicKey;
-use sawtooth_sdk::signing::PublicKey;
-use sawtooth_sdk::signing::PrivateKey;
-use sawtooth_sdk::signing::Signer;
+use base64::{ encode, decode};
 
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
+
+use openssl::sha::sha512;
+
+use protobuf::{Message, RepeatedField};
+
+use rand::prelude::*;
+
+use sawtooth_sdk::messages::transaction::{Transaction, TransactionHeader};
+use sawtooth_sdk::signing::secp256k1::{Secp256k1PrivateKey, Secp256k1PublicKey};
+use sawtooth_sdk::signing::{create_context, PublicKey,PrivateKey,Signer };
+
+use serde_json::json;
 
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 
-mod tp_helper;
+const VALIDATOR_REGISTRY: &str = "dignitas";
+const VALIDATOR_REGISTRY_VERSION: &str = "1.0";
 
+// UNWRAP Section
 pub fn unwrap_votes(vote: &str){
     println!("Vote ID | Agree | Disagree");
     let decoded = decode(vote).expect("Upsi");
@@ -33,6 +35,7 @@ pub fn unwrap_balance(vote:  &str){
     println!("{}", String::from_utf8(decoded).expect("Upsi a dobrar"));
 }
 
+// GENKEY Section
 pub fn generate_key() -> Box<PrivateKey> {
     println!("Creating and Storing a Key");
 
@@ -88,30 +91,35 @@ pub fn priv_key_from_file(file_name: &str) -> Box<PrivateKey> {
     Box::new(private_key)
 }
 
-    pub fn
-vote( private_key : Box<PrivateKey>, batcher_key : Box<PublicKey>, vote_id: String, value: i64)
-{
-
-    let payload = vec![String::from("Vote"),vote_id, value.to_string()];
+pub fn
+generate_transaction(payload: Vec<String>, private_key : Box<PrivateKey>, batcher_key : Box<PublicKey>) -> Transaction {
 
     let payload_string = payload.join(",");
-
     let context = create_context("secp256k1") .expect("Unsupported algorithm");
     let signer = Signer::new(context.as_ref(), private_key.as_ref());
     let pubkey = signer.get_public_key().expect("Something went really wrong");
     let address = get_addresses(&pubkey.as_hex());
     // Create Transactio Header 
-    let transaction_header = tp_helper::create_transaction_header( &address, &address, payload_string.clone(), pubkey, batcher_key);
+    let transaction_header = create_transaction_header( &address, &address, payload_string.clone(), pubkey, batcher_key);
 
     // Create Transaction
-    let transaction = tp_helper::create_transaction(
+    let transaction = create_transaction(
         &signer,
         transaction_header,
         payload_string,
         );
 
+    transaction
+}
+
+pub fn
+vote( private_key : Box<PrivateKey>, batcher_key : Box<PublicKey>, vote_id: String, value: i64){
+
+    let payload = vec![String::from("Vote"),vote_id, value.to_string()];
+    let transaction = generate_transaction(payload, private_key, batcher_key);
+
     println!("Sending Vote to OBU...");
-    tp_helper::submit_transaction_to_obu_api(transaction);
+    submit_transaction_to_obu_api(transaction);
     println!("Done!");
 }
 
@@ -121,58 +129,16 @@ pub fn create_vote(private_key : Box<PrivateKey>,
                    info: String,
                    lat:f64,
                    lng:f64,
-                   dir:f64,
-                   optional_file : Option<&str>)
+                   dir:f64)
 {
+    let payload = vec![ String::from("CreateVote"), String::from(""), String::from(""),
+                        title, info, lat.to_string(), lng.to_string(), dir.to_string() ];
 
-    //Construct Payload
-    let payload = vec![ String::from("CreateVote"),
-    String::from(""),
-    String::from(""),
-    title,
-    info,
-    lat.to_string(),
-    lng.to_string(),
-    dir.to_string()
-    ];
+    let transaction = generate_transaction(payload, private_key, batcher_key);
 
-    let payload_string : String = payload.join(",");
-
-    let context = create_context("secp256k1") .expect("Unsupported algorithm");
-
-    let signer = Signer::new(context.as_ref(), private_key.as_ref());
-
-    let pubkey = signer.get_public_key().expect("Something went really wrong");
-
-    let address = get_addresses(&pubkey.as_hex());
-
-    // Create Transactio Header
-    let transaction_header = tp_helper::create_transaction_header(
-        &address,
-        &address,
-        payload_string.clone(),
-        pubkey,
-        batcher_key
-    );
-
-    // Create Transaction
-    let transaction = tp_helper::create_transaction(
-        &signer,
-        transaction_header,
-        payload_string,
-        );
-
-    match optional_file {
-        Some(f) => {
-            println!("Going to write a file with this Batch List");
-            tp_helper::create_transaction_file(transaction, f);
-        },
-        None    => {
-            println!("Sending Vote to OBU...");
-            tp_helper::submit_transaction_to_obu_api(transaction);
-            println!("Done!");
-        }
-    }
+    println!("Sending Vote Creation to OBU...");
+    submit_transaction_to_obu_api(transaction);
+    println!("Done!");
 }
 
 pub fn get_sw_prefix() -> String {
@@ -199,4 +165,73 @@ fn get_addresses(pubkey: &str) -> Box<[String]> {
 
     let array = [address_vote, address_wallet];
     Box::new(array)
+}
+
+fn to_hex_string(bytes: &Vec<u8>) -> String {
+    let strs: Vec<String> = bytes.iter().map(|b| format!("{:02x}", b)).collect();
+    strs.join("")
+}
+
+fn submit_transaction_to_obu_api(transaction: Transaction) {
+    // Create request body, which in this case is batch list
+    let raw_bytes = transaction
+        .write_to_bytes()
+        .expect("Unable to write batch list as bytes");
+
+    let encoded = encode(&raw_bytes);
+
+    let post = json!({
+        "id": 0,
+        "payload": encoded
+    });
+
+    let client = reqwest::Client::new();
+    let _res = client
+        .post("http://127.0.0.1:8000/api/v1/vote")
+        .header("Content-Type", "application/json")
+        .body(post.to_string())
+        .send();
+}
+
+pub fn create_transaction_header(
+    input_addresses:    &[String],
+    output_addresses:   &[String],
+    payload:            String,
+    public_key:         Box<PublicKey>,
+    batcher_public_key: Box<PublicKey>,
+) -> TransactionHeader {
+    let mut rng = rand::thread_rng();
+    let nonce: f64 = rng.gen();
+    let nonce_string: String = nonce.to_string();
+
+    let mut transaction_header = TransactionHeader::new();
+    transaction_header.set_family_name(VALIDATOR_REGISTRY.to_string());
+    transaction_header.set_family_version(VALIDATOR_REGISTRY_VERSION.to_string());
+    transaction_header.set_nonce(nonce_string);
+    transaction_header.set_payload_sha512(to_hex_string(&sha512(&payload.as_bytes()).to_vec()));
+    transaction_header.set_signer_public_key(public_key.as_hex());
+    transaction_header.set_batcher_public_key(batcher_public_key.as_hex());
+    transaction_header.set_inputs(RepeatedField::from_vec(input_addresses.to_vec()));
+    transaction_header.set_outputs(RepeatedField::from_vec(output_addresses.to_vec()));
+
+    transaction_header
+}
+
+pub fn create_transaction(
+    signer: &Signer,
+    transaction_header: TransactionHeader,
+    payload: String,
+) -> Transaction {
+    // Construct a transaction, it has transaction header, signature and payload
+    let transaction_header_bytes = transaction_header
+        .write_to_bytes()
+        .expect("Error converting transaction header to bytes");
+    let transaction_header_signature = signer
+        .sign(&transaction_header_bytes.to_vec())
+        .expect("Error signing the transaction header");
+    let mut transaction = Transaction::new();
+    transaction.set_header(transaction_header_bytes.to_vec());
+    transaction.set_header_signature(transaction_header_signature);
+    transaction.set_payload(payload.into_bytes());
+    transaction
 }

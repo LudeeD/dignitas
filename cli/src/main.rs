@@ -152,7 +152,6 @@ fn main() {
 
     match action{
         "CreateVote" => {
-            let file = arguments.value_of("output");
 
             let title = arguments.value_of("title")
                 .unwrap_or("Title").to_string();
@@ -165,7 +164,7 @@ fn main() {
             let dir = arguments.value_of("dir")
                 .unwrap_or("0.0").parse().expect("dir");;
 
-            clignitas::create_vote( private_key, batcher_key, title, info, lat, lng, dir, file);
+            clignitas::create_vote( private_key, batcher_key, title, info, lat, lng, dir);
         },
         "Vote" => {
             let value : i64 = arguments.value_of("value").unwrap_or("1").parse().expect("Failed Parsing Value");
