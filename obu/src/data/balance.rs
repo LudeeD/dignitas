@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 use base64::decode;
-use std::time::{SystemTime, UNIX_EPOCH, Duration};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BalanceResponse{

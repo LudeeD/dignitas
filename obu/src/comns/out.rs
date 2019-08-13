@@ -3,16 +3,14 @@ extern crate serde_json;
 
 use std::io::Read;
 
-use serde_json::{Result, Value};
-
 use crate::data::tponses::RootInterfaceStateResponse;
 
-const api_url : &str = "http://172.20.0.3:8008";
+const API_URL : &str = "http://172.20.0.3:8008";
 
 pub fn send( data: Vec<u8> ){
     let client = reqwest::Client::new();
-    let url = api_url.to_string() + "/batches";
-    let res = client
+    let url = API_URL.to_string() + "/batches";
+    let _res = client
         .post(&url)
         .header("Content-Type", "application/octet-stream")
         .body(data)
@@ -20,23 +18,23 @@ pub fn send( data: Vec<u8> ){
 }
 
 pub fn get_state_address( state_address: &str ) 
-    -> RootInterfaceStateResponse
+    -> Result<RootInterfaceStateResponse, &str>
 {
     let client = reqwest::Client::new();
 
     let url = format!("{}/state?address={}",
-                      api_url, state_address);
+                      API_URL, state_address);
 
-    let mut res = client
-        .get(&url)
-        .send()
-        .expect("Something went wrong with the request");
+    let res = client .get(&url) .send();
 
     let mut body = String::new();
-    res.read_to_string(&mut body).expect("get_state_address");
-
-    let v : RootInterfaceStateResponse =
-        serde_json::from_str(&body).expect("get_state_address");
-    println!("{:?}", v);
-    v
+    match res {
+        Ok(mut n) => {
+            n.read_to_string(&mut body).expect("Failed Reading Response Body From Sawtooth");
+            let v : RootInterfaceStateResponse =
+                serde_json::from_str(&body).expect("get_state_address");
+            Ok(v)
+        }
+        Err(_t) => Err("Failed Comunication")
+    }
 }
