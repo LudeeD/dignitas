@@ -125,6 +125,27 @@ pub fn submit_transaction_to_obu_api(transaction: Transaction) {
         .send();
 }
 
+pub fn submit_transaction_to_obu_api_opinion(transaction: Transaction) {
+    // Create request body, which in this case is batch list
+    let raw_bytes = transaction
+        .write_to_bytes()
+        .expect("Unable to write batch list as bytes");
+
+    let encoded = encode(&raw_bytes);
+
+    let post = json!({
+        "id": 0,
+        "payload": encoded
+    });
+
+    let client = reqwest::Client::new();
+    let _res = client
+        .post("http://127.0.0.1:8000/api/v1/vote")
+        .header("Content-Type", "application/json")
+        .body(post.to_string())
+        .send();
+}
+
 // #TODO
 pub fn create_transaction_file(transaction: Transaction, file_name: &str) {
     // Create request body, which in this case is batch list

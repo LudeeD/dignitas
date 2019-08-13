@@ -34,6 +34,11 @@ fn main() {
         .possible_values(&["CreateVote", "Vote"])
         .help("action to send to the DL");
 
+    let arg_vote_id = Arg::with_name("voteID")
+        .long("voteid")
+        .takes_value(true)
+        .help("Vote Id to vote for");
+
     let arg_value = Arg::with_name("value")
         .short("v")
         .long("value")
@@ -90,7 +95,7 @@ fn main() {
         .arg(arg_unvotes);
 
 
-        // Argument Parsing
+    // Argument Parsing
     let arguments = App::new("dignitas")
         .version("0.1")
         .author("Luís Silva")
@@ -98,6 +103,7 @@ fn main() {
         .arg(arg_key_file)
         .arg(arg_action)
         .arg(arg_value)
+        .arg(arg_vote_id)
         .arg(arg_output_file)
         .arg(arg_lat)
         .arg(arg_lng)
@@ -109,21 +115,18 @@ fn main() {
         .subcommand(unwrap_subcmd)
         .get_matches();
 
-    let action  = arguments.value_of("action").unwrap_or("CreateVote");
-    let value : u32 = arguments.value_of("value").unwrap_or("1234").parse().expect("Failed Parsing Number");
-    let file    = arguments.value_of("key").unwrap_or("client.key");
+    let file = arguments.value_of("key").unwrap_or("client.key");
 
     if let Some(_arguments) = arguments.subcommand_matches("genkey"){
-        println!("NÂO chegou Aqui");
-        // For now generating a key also ends the program
+        // Generating a key also ends the program
         let key = clignitas::generate_key();
         clignitas::key_to_file(key.as_ref(), file.to_string());
+        println!("=END=");
         return
     }
 
     if let Some(arguments) = arguments.subcommand_matches("unwrap"){
         println!("UnWrapper Subcommand");
-
         if arguments.is_present("wallet") {
             let value = arguments.value_of("wallet").unwrap();
             println!("UnWrap wallets: {}", &value);
@@ -136,34 +139,42 @@ fn main() {
         return
     }
 
+    let action  = arguments.value_of("action").unwrap_or("CreateVote");
+
     let private_key = clignitas::priv_key_from_file(file);
-
-    let file = arguments.value_of("output");
-
-    let title = arguments.value_of("title")
-        .unwrap_or("Title");
-    let info = arguments.value_of("info")
-        .unwrap_or("Info");
-    let lat = arguments.value_of("lat")
-        .unwrap_or("40.6405");
-    let lng = arguments.value_of("lng")
-        .unwrap_or("8.6538");
-    let dir = arguments.value_of("dir")
-        .unwrap_or("0.0");
 
     let obu_pk = arguments.value_of("obu")
         .unwrap_or("02381caa0892d913daa3c4856a4f9b665931964b3fc630ef9dd5edbd8a27952f7e");
 
     let batcher_key = clignitas::pub_key_from_hex(obu_pk);
 
-    clignitas::create_vote_obu( private_key,
-                                batcher_key,
-                                title.to_string(),
-                                info.to_string(),
-                                lat.parse().expect("create vote"),
-                                lng.parse().expect("create vote"),
-                                dir.parse().expect("create vote"),
-                                file);
+    let vote_id = arguments.value_of("voteID").expect("Failed Parsing Vote ID").to_string();
+
+    match action{
+        "CreateVote" => {
+            let file = arguments.value_of("output");
+
+            let title = arguments.value_of("title")
+                .unwrap_or("Title").to_string();
+            let info = arguments.value_of("info")
+                .unwrap_or("Info").to_string();
+            let lat = arguments.value_of("lat")
+                .unwrap_or("40.6405").parse().expect("Failed Parsing Lat");
+            let lng = arguments.value_of("lng")
+                .unwrap_or("8.6538").parse().expect("Failed Parsing Lng");
+            let dir = arguments.value_of("dir")
+                .unwrap_or("0.0").parse().expect("dir");;
+
+            clignitas::create_vote( private_key, batcher_key, title, info, lat, lng, dir, file);
+        },
+        "Vote" => {
+            let value : i64 = arguments.value_of("value").unwrap_or("1").parse().expect("Failed Parsing Value");
+
+            clignitas::vote( private_key, batcher_key, vote_id, value);
+        },
+        _ => println!(" Action not recognised! Use -h to see Options")
+    }
+
 
     println!("=END=");
 }

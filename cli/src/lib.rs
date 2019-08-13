@@ -88,31 +88,57 @@ pub fn priv_key_from_file(file_name: &str) -> Box<PrivateKey> {
     Box::new(private_key)
 }
 
-pub fn create_vote_obu(private_key : Box<PrivateKey>,
-                       batcher_key : Box<PublicKey>,
-                       title: String,
-                       info: String,
-                       lat:f64,
-                       lng:f64,
-                       dir:f64,
-                       optional_file : Option<&str>)
+    pub fn
+vote( private_key : Box<PrivateKey>, batcher_key : Box<PublicKey>, vote_id: String, value: i64)
+{
+
+    let payload = vec![String::from("Vote"),vote_id, value.to_string()];
+
+    let payload_string = payload.join(",");
+
+    let context = create_context("secp256k1") .expect("Unsupported algorithm");
+    let signer = Signer::new(context.as_ref(), private_key.as_ref());
+    let pubkey = signer.get_public_key().expect("Something went really wrong");
+    let address = get_addresses(&pubkey.as_hex());
+    // Create Transactio Header 
+    let transaction_header = tp_helper::create_transaction_header( &address, &address, payload_string.clone(), pubkey, batcher_key);
+
+    // Create Transaction
+    let transaction = tp_helper::create_transaction(
+        &signer,
+        transaction_header,
+        payload_string,
+        );
+
+    println!("Sending Vote to OBU...");
+    tp_helper::submit_transaction_to_obu_api(transaction);
+    println!("Done!");
+}
+
+pub fn create_vote(private_key : Box<PrivateKey>,
+                   batcher_key : Box<PublicKey>,
+                   title: String,
+                   info: String,
+                   lat:f64,
+                   lng:f64,
+                   dir:f64,
+                   optional_file : Option<&str>)
 {
 
     //Construct Payload
     let payload = vec![ String::from("CreateVote"),
-                        String::from(""),
-                        String::from(""),
-                        title,
-                        info,
-                        lat.to_string(),
-                        lng.to_string(),
-                        dir.to_string()
+    String::from(""),
+    String::from(""),
+    title,
+    info,
+    lat.to_string(),
+    lng.to_string(),
+    dir.to_string()
     ];
 
     let payload_string : String = payload.join(",");
 
-    let context = create_context("secp256k1")
-        .expect("Unsupported algorithm");
+    let context = create_context("secp256k1") .expect("Unsupported algorithm");
 
     let signer = Signer::new(context.as_ref(), private_key.as_ref());
 
