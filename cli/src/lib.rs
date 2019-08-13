@@ -1,4 +1,4 @@
-use base64::{ encode, decode};
+use base64::decode;
 
 use crypto::digest::Digest;
 use crypto::sha2::Sha512;
@@ -12,8 +12,6 @@ use rand::prelude::*;
 use sawtooth_sdk::messages::transaction::{Transaction, TransactionHeader};
 use sawtooth_sdk::signing::secp256k1::{Secp256k1PrivateKey, Secp256k1PublicKey};
 use sawtooth_sdk::signing::{create_context, PublicKey,PrivateKey,Signer };
-
-use serde_json::json;
 
 use std::fs::File;
 use std::io::Read;
@@ -178,18 +176,18 @@ fn submit_transaction_to_obu_api(transaction: Transaction) {
         .write_to_bytes()
         .expect("Unable to write batch list as bytes");
 
-    let encoded = encode(&raw_bytes);
-
-    let post = json!({
-        "id": 0,
-        "payload": encoded
-    });
+//    let encoded = encode(&raw_bytes);
+//
+//    let post = json!({
+//        "id": 0,
+//        "payload": encoded
+//    });
 
     let client = reqwest::Client::new();
     let _res = client
-        .post("http://127.0.0.1:8000/api/v1/vote")
-        .header("Content-Type", "application/json")
-        .body(post.to_string())
+        .post("http://127.0.0.1:8000/api/v1/transaction")
+        .header("Content-Type", "application/octet-stream")
+        .body(raw_bytes)
         .send();
 }
 

@@ -15,8 +15,6 @@ use sawtooth_sdk::messages::transaction::Transaction;
 
 use protobuf::Message;
 
-use base64::decode;
-
 use std::fs::File;
 use std::io::Read;
 use std::str;
@@ -38,7 +36,7 @@ pub fn start_server(){
     start_api();
 }
 
-pub fn proxy_transaction( payload: String )
+pub fn proxy_transaction( payload: Vec<u8> )
 {
     println!("Going to Create a Batch For the Received Transaction");
 
@@ -50,8 +48,10 @@ pub fn proxy_transaction( payload: String )
 
     let signer = Signer::new(context.as_ref(), private_key.as_ref());
 
-    let transaction: Transaction =  protobuf::parse_from_bytes(&decode(&payload).unwrap()[..]).expect("omg, yes");
+    //let transaction: Transaction =  protobuf::parse_from_bytes(&decode(&payload).unwrap()[..]).expect("omg, yes");
+    let transaction: Transaction =  protobuf::parse_from_bytes(&payload).expect("omg, yes");
 
+    println!("{:?}", transaction);
     // Create Batch Header / Batch
     let batch = tp::create_batch(
         &signer,

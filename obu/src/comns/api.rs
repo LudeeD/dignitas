@@ -1,6 +1,6 @@
 use crate::data::votes::{VoteResponse};
-use crate::data::transactions::{Transaction, TransactionResponse};
 use crate::data::balance::{BalanceResponse};
+use crate::data::transactions::TransactionResponse;
 
 use crate::{
     retrieve_dignitas,
@@ -36,12 +36,12 @@ fn get_vote() -> Json<VoteResponse>{
 }
 
 #[post("/transaction", data= "<body>")]
-fn post_transaction(body: Json<Transaction>)
+fn post_transaction(body: Vec<u8>)
     -> Json<TransactionResponse>
 {
     println!("Received a Transaction");
 
-    proxy_transaction(body.payload.clone());
+    proxy_transaction(body);
 
     let response = TransactionResponse{status: "OK".to_string()};
 
