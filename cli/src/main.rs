@@ -148,7 +148,6 @@ fn main() {
 
     let batcher_key = clignitas::pub_key_from_hex(obu_pk);
 
-    let vote_id = arguments.value_of("voteID").expect("Failed Parsing Vote ID").to_string();
 
     match action{
         "CreateVote" => {
@@ -167,6 +166,8 @@ fn main() {
             clignitas::create_vote( private_key, batcher_key, title, info, lat, lng, dir);
         },
         "Vote" => {
+
+            let vote_id = arguments.value_of("voteID").expect("Failed Parsing Vote ID").to_string();
             let value : i64 = arguments.value_of("value").unwrap_or("1").parse().expect("Failed Parsing Value");
 
             clignitas::vote( private_key, batcher_key, vote_id, value);

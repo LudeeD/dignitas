@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use base64::decode;
 
 use crypto::digest::Digest;
@@ -129,8 +131,10 @@ pub fn create_vote(private_key : Box<PrivateKey>,
                    lng:f64,
                    dir:f64)
 {
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).expect("Something Really weird Happened").as_secs();
     let payload = vec![ String::from("CreateVote"), String::from(""), String::from(""),
-                        title, info, lat.to_string(), lng.to_string(), dir.to_string() ];
+                        title, info, lat.to_string(), lng.to_string(), dir.to_string(),
+                        timestamp.to_string()];
 
     let transaction = generate_transaction(payload, private_key, batcher_key);
 
@@ -175,13 +179,6 @@ fn submit_transaction_to_obu_api(transaction: Transaction) {
     let raw_bytes = transaction
         .write_to_bytes()
         .expect("Unable to write batch list as bytes");
-
-//    let encoded = encode(&raw_bytes);
-//
-//    let post = json!({
-//        "id": 0,
-//        "payload": encoded
-//    });
 
     let client = reqwest::Client::new();
     let _res = client
