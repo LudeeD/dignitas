@@ -35,7 +35,8 @@ pub struct PayloadCreateVote{
     pub info: String,
     pub lat : f64,
     pub lng : f64,
-    pub direction: f64
+    pub direction: f64,
+    pub timestamp: u64
 }
 
 pub struct PayloadVote{
@@ -96,9 +97,14 @@ impl<'a> PayloadBuilder<'a>{
         PayloadCreateVote{
             title:      self.data[3].to_string(),
             info:       self.data[4].to_string(),
-            lat :       self.data[5].parse::<f64>().expect("Shait"),
-            lng :       self.data[6].parse::<f64>().expect("Shait"),
-            direction:  self.data[7].parse::<f64>().expect("Shait")
+            lat :       self.data[5].parse::<f64>()
+                                    .expect("Failed parsing Lat"),
+            lng :       self.data[6].parse::<f64>()
+                                    .expect("Failed parsing Lng"),
+            direction:  self.data[7].parse::<f64>()
+                                    .expect("Failed parsing Direction"),
+            timestamp:  self.data[8].parse::<u64>()
+                                    .expect("Failed parsing Timestamp")
         }
     }
     pub fn vote_payload(&self) -> PayloadVote{

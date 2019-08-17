@@ -105,7 +105,7 @@ impl SwTransactions for SwTransactionHandler {
         info!("Create Vote Called");
 
         let vote = Vote::new( info.lat, info.lng, info.direction,
-                              &info.title, &info.info);
+                              &info.title, &info.info, info.timestamp);
 
         state.set_vote(vote).expect("Something Went Wrong");
         Ok(())
