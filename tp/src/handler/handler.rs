@@ -24,7 +24,7 @@ trait SwTransactions {
         state: &mut SwState,
         customer_pubkey: &str,
         info: PayloadVote,
-    ) -> Result<(), ApplyError>;
+        ) -> Result<(), ApplyError>;
 
     fn close_vote(&self, state: &mut SwState, info: PayloadCloseVote)
         -> Result<(), ApplyError>;
@@ -84,15 +84,28 @@ impl TransactionHandler for SwTransactionHandler {
                 self.create_vote(&mut state, payload_builder.create_vote_payload())
             },
             Action::Vote =>{
-                self.vote(&mut state, customer_pubkey,
-                          payload_builder.vote_payload())
+                let vote_payload = payload_builder.vote_payload();
+                let vote_id = vote_payload.vote_id.clone();
+                let vote_value = vote_payload.value.clone();
+                self.vote(&mut state, customer_pubkey, vote_payload)?;
+
+                context.add_event(
+                    "dignitas/create".to_string(),
+                    vec![   ("vote_id".to_string(), vote_id),
+                            ("voter".to_string(),   customer_pubkey.to_string()),
+                            ("value".to_string(),   vote_value.to_string()),
+                    ],
+                    vec![].as_slice()).expect("Something Went wrong sending the Vote Event");
+
+                Ok(())
+
             },
             Action::CloseVote =>{
                 self.close_vote(&mut state, payload_builder.close_vote_payload())
             }
         };
-
         info!("Apply Function Exited");
+
         Ok(())
     }
 }
@@ -102,21 +115,22 @@ impl SwTransactions for SwTransactionHandler {
     fn create_vote(&self, state: &mut SwState, info: PayloadCreateVote)
         -> Result<(), ApplyError> {
 
-        info!("Create Vote Called");
+            info!("Create Vote Called");
 
-        let vote = Vote::new( info.lat, info.lng, info.direction,
-                              &info.title, &info.info, info.timestamp);
+            let vote = Vote::new( info.lat, info.lng, info.direction,
+                                  &info.title, &info.info, info.timestamp);
 
-        state.set_vote(vote).expect("Something Went Wrong");
-        Ok(())
-    }
+            state.set_vote(vote).expect("Something Went Wrong");
+
+            Ok(())
+        }
 
     fn vote(
         &self,
         state: &mut SwState,
         customer_pubkey: &str,
-        info: PayloadVote
-        ) -> Result<(), ApplyError> {
+        info: PayloadVote,
+    ) -> Result<(), ApplyError> {
 
         info!("Vote Called");
 
@@ -162,12 +176,11 @@ impl SwTransactions for SwTransactionHandler {
 
         state.set_vote( vote ).expect("Something Went Wrong");
         info!("Vote state updated");
-
         Ok(())
     }
 
     fn close_vote(&self, state: &mut SwState, info: PayloadCloseVote)
         -> Result<(), ApplyError> {
-        Ok(())
-    }
+            Ok(())
+        }
 }
