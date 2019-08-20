@@ -19,6 +19,10 @@ use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 
+use std::collections::BTreeMap;
+use serde_cbor::to_vec;
+
+
 const VALIDATOR_REGISTRY: &str = "dignitas";
 const VALIDATOR_REGISTRY_VERSION: &str = "1.0";
 
@@ -92,21 +96,20 @@ pub fn priv_key_from_file(file_name: &str) -> Box<PrivateKey> {
 }
 
 pub fn
-generate_transaction(payload: Vec<String>, private_key : Box<PrivateKey>, batcher_key : Box<PublicKey>) -> Transaction {
+generate_transaction(payload: Vec<u8>, private_key : Box<PrivateKey>, batcher_key : Box<PublicKey>) -> Transaction {
 
-    let payload_string = payload.join(",");
     let context = create_context("secp256k1") .expect("Unsupported algorithm");
     let signer = Signer::new(context.as_ref(), private_key.as_ref());
     let pubkey = signer.get_public_key().expect("Something went really wrong");
     let address = get_addresses(&pubkey.as_hex());
     // Create Transactio Header 
-    let transaction_header = create_transaction_header( &address, &address, payload_string.clone(), pubkey, batcher_key);
+    let transaction_header = create_transaction_header( &address, &address, payload.clone(), pubkey, batcher_key);
 
     // Create Transaction
     let transaction = create_transaction(
         &signer,
         transaction_header,
-        payload_string,
+        payload,
         );
 
     transaction
@@ -114,9 +117,17 @@ generate_transaction(payload: Vec<String>, private_key : Box<PrivateKey>, batche
 
 pub fn
 vote( private_key : Box<PrivateKey>, batcher_key : Box<PublicKey>, vote_id: String, value: i64){
+    let value_str = value.to_string();
 
-    let payload = vec![String::from("Vote"),vote_id, value.to_string()];
-    let transaction = generate_transaction(payload, private_key, batcher_key);
+    let mut payload = BTreeMap::new();
+    payload.insert("action", "vote");
+    payload.insert("voteID",&vote_id);
+    payload.insert("value", &value_str);
+    let payload_bytes = to_vec(&payload).expect("Encoding Went Wrong");
+
+    let transaction = generate_transaction(payload_bytes, private_key, batcher_key);
+
+    println!("{:#?}", transaction);
 
     println!("Sending Vote to OBU...");
     submit_transaction_to_obu_api(transaction);
@@ -131,12 +142,27 @@ pub fn create_vote(private_key : Box<PrivateKey>,
                    lng:f64,
                    dir:f64)
 {
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).expect("Something Really weird Happened").as_secs();
-    let payload = vec![ String::from("CreateVote"), String::from(""), String::from(""),
-                        title, info, lat.to_string(), lng.to_string(), dir.to_string(),
-                        timestamp.to_string()];
+    let timestamp_str = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Something Really weird Happened")
+        .as_secs()
+        .to_string();
+    let lat_str = lat.to_string();
+    let lng_str = lng.to_string();
+    let dir_str = dir.to_string();
 
-    let transaction = generate_transaction(payload, private_key, batcher_key);
+    let mut payload = BTreeMap::new();
+    payload.insert("action", "create");
+    payload.insert("title", &title);
+    payload.insert("info",  &info);
+    payload.insert("lat", &lat_str);
+    payload.insert("lng", &lng_str);
+    payload.insert("dir", &dir_str);
+    payload.insert("timestamp", &timestamp_str);
+
+    let payload_bytes = to_vec(&payload).expect("Encoding Went Wrong");
+
+    let transaction = generate_transaction(payload_bytes, private_key, batcher_key);
 
     println!("Sending Vote Creation to OBU...");
     submit_transaction_to_obu_api(transaction);
@@ -191,7 +217,7 @@ fn submit_transaction_to_obu_api(transaction: Transaction) {
 pub fn create_transaction_header(
     input_addresses:    &[String],
     output_addresses:   &[String],
-    payload:            String,
+    payload:            Vec<u8>,
     public_key:         Box<PublicKey>,
     batcher_public_key: Box<PublicKey>,
 ) -> TransactionHeader {
@@ -203,7 +229,7 @@ pub fn create_transaction_header(
     transaction_header.set_family_name(VALIDATOR_REGISTRY.to_string());
     transaction_header.set_family_version(VALIDATOR_REGISTRY_VERSION.to_string());
     transaction_header.set_nonce(nonce_string);
-    transaction_header.set_payload_sha512(to_hex_string(&sha512(&payload.as_bytes()).to_vec()));
+    transaction_header.set_payload_sha512(to_hex_string(&sha512(&payload).to_vec()));
     transaction_header.set_signer_public_key(public_key.as_hex());
     transaction_header.set_batcher_public_key(batcher_public_key.as_hex());
     transaction_header.set_inputs(RepeatedField::from_vec(input_addresses.to_vec()));
@@ -215,7 +241,7 @@ pub fn create_transaction_header(
 pub fn create_transaction(
     signer: &Signer,
     transaction_header: TransactionHeader,
-    payload: String,
+    payload: Vec<u8>,
 ) -> Transaction {
     // Construct a transaction, it has transaction header, signature and payload
     let transaction_header_bytes = transaction_header
@@ -227,6 +253,6 @@ pub fn create_transaction(
     let mut transaction = Transaction::new();
     transaction.set_header(transaction_header_bytes.to_vec());
     transaction.set_header_signature(transaction_header_signature);
-    transaction.set_payload(payload.into_bytes());
+    transaction.set_payload(payload);
     transaction
 }

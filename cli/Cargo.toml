@@ -5,6 +5,7 @@ authors = ["Luís Silva <lfssilva@ua.pt>"]
 edition = "2018"
 
 [dependencies]
+serde_cbor = "0.10"
 clap = "~2.27.0"
 base64 = "0.10"
 openssl = "0.10"
