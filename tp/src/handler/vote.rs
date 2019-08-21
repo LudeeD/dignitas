@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+
 use sawtooth_sdk::processor::handler::ApplyError;
 
 use geohash_16::{encode, Coordinate};
@@ -54,16 +55,14 @@ impl Vote {
         encoded
     }
 
-    pub fn to_cbor(&self) -> Option<Vec<u8>> {
-        let ret: Vec<u8> = serde_cbor::to_vec(&self)
-            .expect("to_cbor_string");
-        Some(ret)
+    pub fn to_cbor(&self) -> Result<Vec<u8>,ApplyError> {
+        serde_cbor::to_vec(&self)
+            .map_err(|err| ApplyError::InternalError(format!("{}", err)))
     }
 
-    pub fn from_cbor(vote_bytes: Vec<u8>) -> Option<Vote>{
-        let vote: Vote = serde_cbor::from_slice(&vote_bytes)
-            .expect("from_cbor_string");
-        Some(vote)
+    pub fn from_cbor(vote_bytes: Vec<u8>) -> Result<Vote,ApplyError> {
+        serde_cbor::from_slice(&vote_bytes)
+            .map_err(|err| ApplyError::InternalError(format!("{}", err)))
     }
 
     pub fn agree_more(&mut self, value: i64) -> Result<(), ApplyError> {

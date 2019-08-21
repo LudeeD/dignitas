@@ -5,7 +5,7 @@ use std::io::Read;
 
 use crate::data::tponses::RootInterfaceStateResponse;
 
-const API_URL : &str = "http://172.20.0.3:8008";
+const API_URL : &str = "http://localhost:8008";
 
 pub fn send( data: Vec<u8> ){
     let client = reqwest::Client::new();

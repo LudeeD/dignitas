@@ -39,15 +39,12 @@ impl<'a> SwState<'a> {
     fn calculate_address_votes( vote_id: String ) -> String{
         let zero_vec : String = vec!['0';50].into_iter().collect();
         let address = get_votes_prefix() + &vote_id + &zero_vec;
-        info!("{}", address);
         address
     }
 
-    // eventually the only one
-    pub fn get_balance_reward(&mut self, address: &str)
-        -> Result<Option<i64>, ApplyError>
+    pub fn get_balance(&mut self, name: &str) -> Result<Option<i64>, ApplyError>
     {
-        info!("Wallet Address: {}", address);
+        let address = SwState::calculate_address_wallets(name);
         match self.context.get_state_entry(&address)?{
             Some(packed) => {
                 let value: i64 = String::from_utf8(packed)
@@ -60,88 +57,23 @@ impl<'a> SwState<'a> {
         }
     }
 
-    pub fn set_balance_reward(&mut self, name: &str, value: i64) 
-        -> Result<(),ApplyError> {
+    pub fn set_balance(&mut self, name: &str, value: i64) -> Result<(),ApplyError> {
+        self.context.set_state_entry(name.to_string(), value.to_string().into_bytes())
+            .map_err(|err| ApplyError::InternalError(format!("{}", err)))
+    }
+
+    pub fn set_vote(&mut self, v: Vote) -> Result<(), ApplyError> {
         self.context.set_state_entry(
-                name.to_string(),
-                value.to_string().into_bytes()
-            )
-            .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
-        Ok(())
-    }
-
-
-    pub fn get_balance(&mut self, name: &str) -> Result<Option<i64>, ApplyError> {
-        let address = SwState::calculate_address_wallets(name);
-        info!("Wallet Address: {}", address);
-        let d = self.context.get_state_entry(&address)?;
-        match d {
-            Some(packed) => {
-                let value_string = match String::from_utf8(packed) {
-                    Ok(v) => v,
-                    Err(_) => {
-                        return Err(ApplyError::InvalidTransaction(String::from(
-                            "Invalid UTF-8 sequence",
-                        )));
-                    }
-                };
-
-                let value: i64 = match value_string.parse() {
-                    Ok(v) => v,
-                    Err(_) => {
-                        return Err(ApplyError::InvalidTransaction(String::from(
-                            "Unable to parse UTF-8 String as u32",
-                        )));
-                    }
-                };
-
-                Ok(Some(value))
-            }
-            None => {
-                Ok(None)
-            },
-        }
-    }
-
-    pub fn set_balance(&mut self, name: &str, value: i64) -> Result<(), ApplyError> {
-        self.context
-            .set_state_entry(SwState::calculate_address_wallets(name),value.to_string().into_bytes())
-            .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
-        Ok(())
-    }
-
-    pub fn set_vote(&mut self, v: Vote) -> Result<(), ApplyError>{
-        // Check For a Existing Vote #TODO
-
-        self.context
-            .set_state_entry(
                 SwState::calculate_address_votes(v.id.clone()),
-                v.to_cbor().expect("upsi")
-            )
-            .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
-        Ok(())
-
+                v.to_cbor()?
+        ).map_err(|err| ApplyError::InternalError(format!("{}", err)))
     }
 
-    pub fn get_vote(&mut self, vote_id: String)
-        -> Result<Option<Vote>, ApplyError> {
-
+    pub fn get_vote(&mut self, vote_id: String) -> Result<Vote, ApplyError> {
         let address = SwState::calculate_address_votes(vote_id);
-        let d = self.context.get_state_entry(&address)?;
-        match d {
-            Some(packed) => {
-                let vote: Vote = match Vote::from_cbor(packed) {
-                    Some(v) => v,
-                    None => {
-                        return Err(ApplyError::InvalidTransaction(String::from(
-                            "Unable to parse UTF-8 String as u32",
-                        )));
-                    }
-                };
-
-                Ok(Some(vote))
-            }
-            None => Ok(None),
+        match self.context.get_state_entry(&address)? {
+            Some(packed) => Vote::from_cbor(packed),
+            None => Err(ApplyError::InternalError(String::from("Inexistent Vote"))),
         }
     }
 }
