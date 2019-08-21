@@ -44,13 +44,3 @@ services:
     depends_on:
       - validator
     entrypoint: sawtooth-rest-api -C tcp://validator:4004 --bind rest-api:8008
-
-  shell:
-    image: hyperledger/sawtooth-all:1.1
-    container_name: sawtooth-shell-default
-    depends_on:
-      - rest-api
-    entrypoint: "bash -c \"\
-        sawtooth keygen && \
-        tail -f /dev/null \
-        \""
