@@ -25,6 +25,9 @@ trait SwTransactions {
 
     fn close_vote(&self, state: &mut SwState, info: BTreeMap<String,String>)
         -> Result<(), ApplyError>;
+
+    fn reward(&self, state: &mut SwState, info: BTreeMap<String,String>)
+        -> Result<(), ApplyError>;
 }
 
 impl SwTransactionHandler {
@@ -95,6 +98,9 @@ impl TransactionHandler for SwTransactionHandler {
                     },
                     "close" => {
                         self.close_vote(&mut state, payload)
+                    },
+                    "reward" => {
+                        self.reward(&mut state, payload)
                     },
                     _ => {
                         Err(ApplyError::InternalError(String::from("No Action in Payload")))
@@ -195,5 +201,23 @@ impl SwTransactions for SwTransactionHandler {
         -> Result<(), ApplyError> {
             info!("Close Vote");
             Ok(())
+        }
+
+    fn reward(&self, state: &mut SwState, info: BTreeMap<String,String>)
+        -> Result<(), ApplyError> {
+            info!("Rewarding People");
+            let voter = info.get("voter").expect("Bad Payload");
+            let mut value : i64 = info.get("value").expect("Bad Payload")
+                            .parse().expect("Bad Payload");
+
+            let curr_balance = state.get_balance(voter)
+                .expect("State Exploded")
+                .expect("State Exploded");
+
+
+            let new_value = value + curr_balance;
+
+            info!("{}",format!("curr: {}\nvalue: {}\nnew: {}", curr_balance, value, new_value));
+            state.set_balance(voter, new_value)
         }
 }

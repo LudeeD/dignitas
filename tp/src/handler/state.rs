@@ -43,6 +43,34 @@ impl<'a> SwState<'a> {
         address
     }
 
+    // eventually the only one
+    pub fn get_balance_reward(&mut self, address: &str)
+        -> Result<Option<i64>, ApplyError>
+    {
+        info!("Wallet Address: {}", address);
+        match self.context.get_state_entry(&address)?{
+            Some(packed) => {
+                let value: i64 = String::from_utf8(packed)
+                  .map_err(|err| ApplyError::InternalError(format!("{}",err)))?
+                  .parse()
+                  .map_err(|err| ApplyError::InternalError(format!("{}",err)))?;
+                Ok(Some(value))
+            },
+            None => Ok(None),
+        }
+    }
+
+    pub fn set_balance_reward(&mut self, name: &str, value: i64) 
+        -> Result<(),ApplyError> {
+        self.context.set_state_entry(
+                name.to_string(),
+                value.to_string().into_bytes()
+            )
+            .map_err(|err| ApplyError::InternalError(format!("{}", err)))?;
+        Ok(())
+    }
+
+
     pub fn get_balance(&mut self, name: &str) -> Result<Option<i64>, ApplyError> {
         let address = SwState::calculate_address_wallets(name);
         info!("Wallet Address: {}", address);
