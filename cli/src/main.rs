@@ -43,6 +43,7 @@ fn main() {
         .short("v")
         .long("value")
         .takes_value(true)
+        .allow_hyphen_values(true)
         .help("value to send to the DL");
 
     let arg_lat = Arg::with_name("lat")
