@@ -116,7 +116,7 @@ generate_transaction(payload: Vec<u8>, private_key : Box<PrivateKey>, batcher_ke
 }
 
 pub fn
-vote( private_key : Box<PrivateKey>, batcher_key : Box<PublicKey>, vote_id: String, value: i64){
+vote( private_key : Box<PrivateKey>, batcher_key : Box<PublicKey>, vote_id: String, value: i64, client: &reqwest::Client){
     let value_str = value.to_string();
 
     let mut payload = BTreeMap::new();
@@ -130,7 +130,7 @@ vote( private_key : Box<PrivateKey>, batcher_key : Box<PublicKey>, vote_id: Stri
     println!("{:#?}", transaction);
 
     println!("Sending Vote to OBU...");
-    submit_transaction_to_obu_api(transaction);
+    submit_transaction_to_obu_api(transaction, client);
     println!("Done!");
 }
 
@@ -140,7 +140,9 @@ pub fn create_vote(private_key : Box<PrivateKey>,
                    info: String,
                    lat:f64,
                    lng:f64,
-                   dir:f64)
+                   dir:f64,
+                   client: &reqwest::Client
+                   )
 {
     let timestamp_str = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -164,9 +166,9 @@ pub fn create_vote(private_key : Box<PrivateKey>,
 
     let transaction = generate_transaction(payload_bytes, private_key, batcher_key);
 
-    println!("Sending Vote Creation to OBU...");
-    submit_transaction_to_obu_api(transaction);
-    println!("Done!");
+    //println!("Sending Vote Creation to OBU...");
+    submit_transaction_to_obu_api(transaction, client);
+    //println!("Done!");
 }
 
 pub fn get_sw_prefix() -> String {
@@ -200,13 +202,13 @@ fn to_hex_string(bytes: &Vec<u8>) -> String {
     strs.join("")
 }
 
-fn submit_transaction_to_obu_api(transaction: Transaction) {
+
+fn submit_transaction_to_obu_api(transaction: Transaction, client: &reqwest::Client) {
     // Create request body, which in this case is batch list
     let raw_bytes = transaction
         .write_to_bytes()
         .expect("Unable to write batch list as bytes");
 
-    let client = reqwest::Client::new();
     let _res = client
         .post("http://127.0.0.1:8000/api/v1/transaction")
         .header("Content-Type", "application/octet-stream")
