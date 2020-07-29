@@ -16,6 +16,8 @@ services:
       - 4004
     ports:
       - "4004:4004"
+    volumes:
+      - ./confs/validator.toml:/etc/sawtooth/validator.toml
     # start the validator with an empty genesis batch
     entrypoint: "bash -c \"\
         sawadm keygen && \
@@ -41,6 +43,8 @@ services:
     container_name: sawtooth-rest-api-default
     ports:
       - "8008:8008"
+    volumes:
+      - ./confs/rest_api.toml:/etc/sawtooth/rest_api.toml
     depends_on:
       - validator
     entrypoint: sawtooth-rest-api -C tcp://validator:4004 --bind rest-api:8008

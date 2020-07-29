@@ -45,6 +45,7 @@ impl<'a> SwState<'a> {
     pub fn get_balance(&mut self, name: &str) -> Result<Option<i64>, ApplyError>
     {
         let address = SwState::calculate_address_wallets(name);
+        info!("get {}", address);
         match self.context.get_state_entry(&address)?{
             Some(packed) => {
                 let value: i64 = String::from_utf8(packed)
@@ -58,7 +59,10 @@ impl<'a> SwState<'a> {
     }
 
     pub fn set_balance(&mut self, name: &str, value: i64) -> Result<(),ApplyError> {
-        self.context.set_state_entry(name.to_string(), value.to_string().into_bytes())
+        // This was not here :/
+        let address = SwState::calculate_address_wallets(name);
+        info!("set {}", name);
+        self.context.set_state_entry(address, value.to_string().into_bytes())
             .map_err(|err| ApplyError::InternalError(format!("{}", err)))
     }
 

@@ -123,15 +123,21 @@ impl SwTransactions for SwTransactionHandler {
         info!("Creating New Vote");
 
         let title   = info.get("title").expect("Bad Payload");
+        info!("{}", title);
         let details = info.get("info").expect("Bad Payload");
+        info!("{}", details);
         let lat: f64= info.get("lat").expect("Bad Payload")
             .parse().expect("Bad Payload");
+        info!("{}", lat);
         let lng: f64= info.get("lng").expect("Bad Payload")
             .parse().expect("Bad Payload");
+        info!("{}", lng);
         let dir: f64= info.get("dir").expect("Bad Payload")
             .parse().expect("Bad Payload");
+        info!("{}", dir);
         let time:u64= info.get("timestamp").expect("Bad Payload")
             .parse().expect("Bad Payload");
+        info!("{}", time);
 
         let vote = Vote::new(lat,lng,dir,title,details,time);
 
@@ -157,6 +163,7 @@ impl SwTransactions for SwTransactionHandler {
             };
 
 
+            info!("curr balance");
             let current_balance: i64 = match state.get_balance(customer_pubkey) {
                 Ok(Some(v)) => v,
                 Ok(None) => {
@@ -168,6 +175,7 @@ impl SwTransactions for SwTransactionHandler {
                 },
                 Err(err) => return Err(err),
             };
+            info!("curr balance");
 
             let abs_value = value.abs();
 
@@ -206,6 +214,7 @@ impl SwTransactions for SwTransactionHandler {
         -> Result<(), ApplyError> {
 
             info!("Rewarding People");
+            // TODO see documentation to implement last 
 
             let voter = match info.get("voter"){
                 Some(v) => v,

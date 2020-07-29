@@ -21,6 +21,7 @@ use std::process;
 
 fn main() {
     let endpoint = "tcp://localhost:4004";
+    //let endpoint = "tcp://localhost:4008";
 
     // Logging Infrastructure
     let stdout = ConsoleAppender::builder()
