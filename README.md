@@ -6,19 +6,55 @@
 
 - Hyperledger Sawtooth
 
-	To launch the Distributed Ledger nodes, the Consensus, and the Ledger API
+    To launch the Distributed Ledger nodes, the Consensus, and the Ledger API
+	
+	**Pre Requisites**
+	- Docker & Docker Compose [link](https://docs.docker.com/compose/install/)
+	
+	**Instructions**
+```
+$ cd docker
+$ docker-compose up --force
+```
     
 - Transaction Processor
 	
     Business logic in order for the Sawtooth nodes understand and process our requests
 
+	**Pre Requisites**
+	- Rust [link](https://www.rust-lang.org/learn/get-started)
+
+	**Instructions**
+```
+$ cd tp
+$ cargo run
+```
+
 - Gateway Server
 	
     Server that acts as a gateway between mobile nodes and the Sawtooth Network
+	
+	**Pre Requisites**
+	- Rust [link](https://www.rust-lang.org/learn/get-started)
+
+	**Instructions**
+```
+$ cd ledger-proxy
+$ cargo run
+```
     
  - CLI
  
  	Simple program that enables the testing of the dignitas features
+	
+	**Pre Requisites**
+	- Rust [link](https://www.rust-lang.org/learn/get-started)
+
+	**Instructions**
+```
+$ cd cli
+$ cargo run -- -h # to see the help for this cli
+```
 
 ## Components in other repositories
 	
